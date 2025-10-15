@@ -7,7 +7,8 @@ import { supabaseAdmin } from '../config/database.config';
 import { CreateProductDto } from '../products/dto/create-product.dto';
 import { UpdateProductDto } from '../products/dto/update-product.dto';
 import { File } from 'multer';
-
+import * as ExcelJS from 'exceljs';
+import { Response } from 'express';
 @Injectable()
 export class AdminService {
   // Dashboard
@@ -157,5 +158,51 @@ export class AdminService {
     if (error) throw new InternalServerErrorException(error.message);
 
     return { message: 'Product updated successfully', product: data };
+  }
+
+
+ async exportUsersToExcel(res: Response) {
+    const { data: users, error } = await supabaseAdmin
+      .from('users')
+      .select('*');
+
+    if (error) throw new InternalServerErrorException(error.message);
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Users');
+
+    // Define columns based on all user fields
+    worksheet.columns = [
+      { header: 'ID', key: 'id', width: 36 },
+      { header: 'Email', key: 'email', width: 32 },
+      { header: 'Username', key: 'username', width: 20 },
+      { header: 'Role', key: 'role', width: 15 },
+      { header: 'Created At', key: 'created_at', width: 25 },
+      { header: 'Updated At', key: 'updated_at', width: 25 },
+      { header: 'Full Name', key: 'full_name', width: 30 },
+      { header: 'Phone', key: 'phone', width: 20 },
+      { header: 'Whatsapp No', key: 'whatsapp_no', width: 20 },
+      { header: 'Address', key: 'address', width: 40 },
+      { header: 'Profile Photo', key: 'profile_photo', width: 60 },
+    ];
+
+    // Add each user row
+    users.forEach((user) => {
+      worksheet.addRow(user);
+    });
+
+    // Set headers for file download
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename=users.xlsx',
+    );
+
+    // Write and send workbook
+    await workbook.xlsx.write(res);
+    res.end();
   }
 }

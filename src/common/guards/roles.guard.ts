@@ -1,3 +1,4 @@
+// src/utils/roles.guard.ts
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Role } from '../enums/role.enum';
@@ -8,9 +9,10 @@ export class RolesGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     const roles = this.reflector.get<Role[]>('roles', context.getHandler());
-    if (!roles) return true;
+    if (!roles) return true; // No role restriction
+
     const request = context.switchToHttp().getRequest();
     const user = request.user;
-    return roles.includes(user.role);
+    return user && roles.includes(user.role);
   }
 }

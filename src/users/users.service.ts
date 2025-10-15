@@ -19,32 +19,30 @@ export class UsersService {
   }
 
 async updateProfile(profile_photo: File, dto: UpdateProfileDto) {
-  const { userId, full_name, phone, addresses } = dto;
+  const { userId, full_name, phone, whatsapp_no, addresses } = dto;
 
   if (!userId) throw new InternalServerErrorException('UserId is required');
 
   const updateData: any = {};
   if (full_name) updateData.full_name = full_name;
   if (phone) updateData.phone = phone;
+  if (whatsapp_no) updateData.whatsapp_no = whatsapp_no; // <-- Added here
 
-  // ✅ Save addresses directly as JSON for jsonb column
-if (addresses) {
-  if (typeof addresses === 'string') {
-    // Typecast to string so TS knows we can use string methods
-    const addrStr = addresses as string;
-    updateData.address = addrStr.includes(',')
-      ? addrStr.split(',').map(addr => addr.trim())
-      : [addrStr];
-  } else if (Array.isArray(addresses)) {
-    updateData.address = addresses;
-  } else {
-    throw new InternalServerErrorException('Invalid address format');
+  // Addresses processing as before
+  if (addresses) {
+    if (typeof addresses === 'string') {
+      const addrStr = addresses as string;
+      updateData.address = addrStr.includes(',')
+        ? addrStr.split(',').map(addr => addr.trim())
+        : [addrStr];
+    } else if (Array.isArray(addresses)) {
+      updateData.address = addresses;
+    } else {
+      throw new InternalServerErrorException('Invalid address format');
+    }
   }
-}
 
-
-
-  // Upload profile photo to Supabase using service role
+  // Upload profile photo as before
   if (profile_photo) {
     try {
       const filePath = `products/${Date.now()}-${profile_photo.originalname}`;

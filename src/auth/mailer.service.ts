@@ -27,23 +27,29 @@ async sendOtp(email: string, otp: string) {
       to: email,
       subject: 'Your OTP Code',
       html: `
-        <div style="font-family: Arial, sans-serif; text-align: center; color: #333;">
-          <!-- Company Logo -->
-          <img src="https://yourcompany.com/logo.png" alt="SThree" style="width: 150px; margin-bottom: 20px;" />
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; background: #fff; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); padding: 30px; color: #444;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <img src="https://yourcompany.com/images/sthree-logo.png" alt="SThree" style="width: 160px; object-fit: contain;" />
+          </div>
 
-          <h2>Welcome to SThree!</h2>
-          <p>Your OTP code is:</p>
-          <h1 style="color: #2E86DE;">${otp}</h1>
-          <p>This OTP will expire in 10 minutes.</p>
+          <h1 style="font-weight: 700; color: #2E86DE; text-align: center; margin-bottom: 10px;">Welcome to SThree!</h1>
+          <p style="font-size: 16px; text-align: center; margin: 0 0 20px;">Your one-time password (OTP) code is:</p>
 
-          <!-- Button -->
-          <a href="https://yourcompany.com/verify" 
-             style="display: inline-block; padding: 12px 25px; margin-top: 20px; background-color: #2E86DE; color: #fff; text-decoration: none; border-radius: 5px;">
-            Verify Now
-          </a>
+          <div style="font-size: 40px; font-weight: 700; color: #2E86DE; text-align: center; letter-spacing: 8px; margin-bottom: 30px; user-select: all;">
+            ${otp}
+          </div>
 
-          <p style="margin-top: 30px; font-size: 12px; color: #999;">
-            If you did not request this OTP, please ignore this email.
+          <p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;">This OTP will expire in <strong>10 minutes</strong>.</p>
+
+          <div style="text-align: center;">
+            <a href="https://yourcompany.com/verify" 
+               style="background-color: #2E86DE; color: #fff; text-decoration: none; padding: 14px 40px; border-radius: 30px; font-weight: 600; display: inline-block; box-shadow: 0 5px 15px rgba(46, 134, 222, 0.4); transition: background-color 0.3s ease;">
+              Verify Now
+            </a>
+          </div>
+
+          <p style="font-size: 12px; color: #999; text-align: center; margin-top: 40px;">
+            If you did not request this OTP, please ignore this email or contact support.
           </p>
         </div>
       `,

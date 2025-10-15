@@ -13,23 +13,30 @@ import * as jwt from 'jsonwebtoken';
 import { Role } from '../common/enums/role.enum';
 import { OAuth2Client } from 'google-auth-library';
 import { MailerService } from './mailer.service';
+import { ConfigService } from '@nestjs/config';
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 
 @Injectable()
 export class AuthService {
-  private googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
+  private googleClient: OAuth2Client;
 
-  constructor(private readonly mailerService: MailerService) {}
-
+  constructor(
+    private readonly mailerService: MailerService,
+    private readonly configService: ConfigService,  // Inject ConfigService
+  ) {
+    const googleClientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
+    this.googleClient = new OAuth2Client(googleClientId);
+  }
   // ---------------- REGISTER ----------------
   async registerUser(dto: RegisterDto) {
     return this.register(dto, Role.USER, true);
   }
 
-  async registerAdmin(dto: RegisterDto) {
-    return this.register(dto, Role.ADMIN, false);
-  }
+async registerAdmin(dto: RegisterDto) {
+  // Pass requireOtp = true for admin too
+  return this.register(dto, Role.ADMIN, true);
+}
+
 
   private async register(dto: RegisterDto, role: Role, requireOtp: boolean) {
     const { email, username, password } = dto;
@@ -82,24 +89,37 @@ export class AuthService {
   }
 
   // ---------------- VERIFY OTP ----------------
-  async verifyOtp(email: string, otp: string) {
-    const { data: user } = await supabase.from('users').select('*').eq('email', email).single();
-    if (!user) throw new NotFoundException('User not found');
+async verifyOtp(email: string, otp: string) {
+  const { data: user } = await supabase.from('users').select('*').eq('email', email).single();
+  if (!user) throw new NotFoundException('User not found');
 
-    const { data: otpData } = await supabase
-      .from('user_otps')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('otp', otp)
-      .maybeSingle();
+  const { data: otpData } = await supabase
+    .from('user_otps')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('otp', otp)
+    .maybeSingle();
 
-    if (!otpData) throw new UnauthorizedException('Invalid OTP');
+  if (!otpData) throw new UnauthorizedException('Invalid OTP');
 
-    await supabase.from('users').update({ email_verified: true }).eq('id', user.id);
-    await supabase.from('user_otps').delete().eq('id', otpData.id);
+  await supabase.from('users').update({ email_verified: true }).eq('id', user.id);
+  await supabase.from('user_otps').delete().eq('id', otpData.id);
 
-    return { message: 'Email verified successfully', email_verified: true };
-  }
+  // Fetch updated user info
+  const { data: updatedUser } = await supabase.from('users').select('*').eq('id', user.id).single();
+
+  return {
+    message: 'Email verified successfully',
+    user: {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      username: updatedUser.username,
+      role: updatedUser.role,
+      email_verified: updatedUser.email_verified,
+    },
+  };
+}
+
 
   // ---------------- LOGIN ----------------
   async loginUser(dto: LoginDto) {
@@ -110,34 +130,39 @@ export class AuthService {
     return this.login(dto, Role.ADMIN);
   }
 
-  private async login(dto: LoginDto, role: Role) {
-    const { email, password } = dto;
+private async login(dto: LoginDto, role: Role) {
+  const { email, password } = dto;
 
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email)
-      .eq('role', role)
-      .single();
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('email', email)
+    .eq('role', role)
+    .single();
 
-    if (error || !data) throw new UnauthorizedException('Invalid credentials');
-    if (!data.email_verified) throw new UnauthorizedException('Email not verified');
+  if (error || !data) throw new UnauthorizedException('Invalid credentials');
+  if (!data.email_verified) throw new UnauthorizedException('Email not verified');
 
-    const valid = await bcrypt.compare(password, data.password);
-    if (!valid) throw new UnauthorizedException('Invalid credentials');
+  const valid = await bcrypt.compare(password, data.password);
+  if (!valid) throw new UnauthorizedException('Invalid credentials');
 
-    const token = jwt.sign(
-      { sub: data.id, role: data.role, email: data.email, username: data.username },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' },
-    );
+  const token = jwt.sign(
+    { sub: data.id, role: data.role, email: data.email, username: data.username },
+    this.configService.get<string>('JWT_SECRET'),
+    { expiresIn: '7d' },
+  );
 
-    return {
-      message: role === Role.USER ? 'User login successful' : 'Admin login successful',
-      token,
-      user: { id: data.id, username: data.username, email: data.email, role: data.role },
-    };
-  }
+  return {
+    message: role === Role.USER ? 'User login successful' : 'Admin login successful',
+    token,
+    id: data.id, // ✅ return the user id
+    username: data.username,
+    email: data.email,
+    role: data.role,
+  };
+}
+
+
 
   // ---------------- PASSWORD RESET ----------------
   async forgotPassword(email: string, role: Role | 'user' | 'admin') {
@@ -178,63 +203,177 @@ export class AuthService {
   }
 
   // ---------------- GOOGLE AUTH ----------------
-  async googleAuth(idToken: string) {
-    const ticket = await this.googleClient.verifyIdToken({ idToken, audience: GOOGLE_CLIENT_ID });
-    const payload = ticket.getPayload();
-    if (!payload?.email || !payload?.name) {
-      throw new UnauthorizedException('Invalid Google token');
-    }
+// auth.service.ts
 
-    const email = payload.email;
-    const name = payload.name;
 
-    let { data: user } = await supabase.from('users').select('*').eq('email', email).maybeSingle();
-    if (!user) {
-      const { data } = await supabase
-        .from('users')
-        .insert({ email, username: name, role: Role.USER, email_verified: true })
-        .select()
-        .single();
-      user = data;
-    }
 
-    const token = jwt.sign(
-      { sub: user.id, role: user.role, email: user.email, username: user.username },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' },
-    );
 
-    return { message: 'Google login successful', token, user };
+  
+// ---------------- GOOGLE AUTH ----------------
+
+// In your AuthService class, replace the existing googleLoginOrRegister method with this:
+
+async googleLoginOrRegister(idToken: string, role: 'user' | 'admin') {
+  let ticket;
+
+  try {
+    ticket = await this.googleClient.verifyIdToken({
+      idToken,
+      audience: this.configService.get<string>('GOOGLE_CLIENT_ID'),
+    });
+  } catch (error) {
+    console.error('Invalid Google token:', error);
+    throw new UnauthorizedException('Invalid Google token');
   }
+
+  const payload = ticket.getPayload();
+  if (!payload?.email) {
+    throw new UnauthorizedException('Google token payload missing email');
+  }
+
+  const email = payload.email;
+  const fullName = payload.name || '';
+  const username = fullName.split(' ')[0]?.toLowerCase() || email.split('@')[0];
+
+  // Admin-specific validation
+  if (role === 'admin') {
+    if (!email.endsWith('@yourcompany.com')) {
+      throw new UnauthorizedException('Admin login restricted to company emails');
+    }
+  }
+
+  // Check if user already exists
+  const { data: existingUser, error: selectError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('email', email)
+    .eq('role', role)
+    .maybeSingle();
+
+  if (selectError && selectError.code !== 'PGRST116') {
+    console.error('Database error while fetching user:', selectError.message);
+    throw new InternalServerErrorException('Database error');
+  }
+
+  let finalUser = existingUser;
+  let isNewUser = false;
+
+  if (!existingUser) {
+    // Insert new user with email_verified true and no password (no OTP)
+    const { data: newUser, error: insertError } = await supabase
+      .from('users')
+      .insert({
+        email,
+        username,
+        full_name: fullName,
+        email_verified: true,  // <-- Set to true immediately
+        role,
+        password: '',          // or null if your DB accepts it
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('User creation failed:', insertError.message);
+      throw new InternalServerErrorException('User creation failed');
+    }
+
+    finalUser = newUser;
+    isNewUser = true;
+  } else if (!existingUser.email_verified) {
+    // If user exists but email_verified false, update it to true
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ email_verified: true })
+      .eq('id', existingUser.id);
+
+    if (updateError) {
+      console.error('Failed to update email_verified:', updateError.message);
+      throw new InternalServerErrorException('Failed to verify email');
+    }
+
+    finalUser.email_verified = true;
+  }
+
+  // Generate token immediately
+  const token = jwt.sign(
+    {
+      sub: finalUser.id,
+      email: finalUser.email,
+      username: finalUser.username,
+      role: finalUser.role,
+    },
+    this.configService.get<string>('JWT_SECRET'),
+    { expiresIn: '7d' },
+  );
+
+  return {
+    message: isNewUser
+      ? `Welcome, new ${role}! Registration successful.`
+      : `Welcome back, ${role}! Login successful.`,
+    token,
+    user: {
+      id: finalUser.id,
+      email: finalUser.email,
+      username: finalUser.username,
+      role: finalUser.role,
+      email_verified: true,
+      isNewUser,  // <-- send flag to frontend
+    },
+  };
+}
+
+
+
+  async googleLoginOrRegisterAdmin(idToken: string) {
+    return this.googleLoginOrRegister(idToken, 'admin');
+  }
+
+
+
+
+
+
+
 
   // ---------------- FACEBOOK AUTH ----------------
-  async facebookAuth(accessToken: string) {
-    const res = await fetch(`https://graph.facebook.com/me?fields=id,name,email&access_token=${accessToken}`);
-    const profile: { email?: string; name?: string } = await res.json();
+// Assuming you already have the imports for UnauthorizedException, jwt, supabase, Role, etc.
 
-    if (!profile?.email || !profile?.name) {
-      throw new UnauthorizedException('Invalid Facebook token');
-    }
+async facebookAuth(accessToken: string) {
+  const res = await fetch(`https://graph.facebook.com/me?fields=id,name,email&access_token=${accessToken}`);
+  const profile: { email?: string; name?: string } = await res.json();
 
-    const email = profile.email;
-    const name = profile.name;
-
-    let { data: user } = await supabase.from('users').select('*').eq('email', email).maybeSingle();
-    if (!user) {
-      const { data } = await supabase
-        .from('users')
-        .insert({ email, username: name, role: Role.USER, email_verified: true })
-        .select()
-        .single();
-      user = data;
-    }
-
-    const token = jwt.sign(
-      { sub: user.id, role: user.role, email: user.email, username: user.username },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' },
-    );
-
-    return { message: 'Facebook login successful', token, user };
+  if (!profile?.email || !profile?.name) {
+    throw new UnauthorizedException('Invalid Facebook token');
   }
+
+  const email = profile.email;
+  const name = profile.name;
+
+  let { data: user } = await supabase.from('users').select('*').eq('email', email).maybeSingle();
+  if (!user) {
+    const { data } = await supabase
+      .from('users')
+      .insert({ email, username: name, role: Role.USER, email_verified: true })
+      .select()
+      .single();
+    user = data;
+  }
+
+  const token = jwt.sign(
+    { sub: user.id, role: user.role, email: user.email, username: user.username },
+    process.env.JWT_SECRET,
+    { expiresIn: '7d' },
+  );
+
+  return { message: 'Facebook login successful', token, user };
+}
+
+
+async logout(userId: string) {
+  // Stateless logout - nothing to do server-side unless you're blacklisting tokens
+  return { message: 'Logout successful' };
+}
+
+
 }

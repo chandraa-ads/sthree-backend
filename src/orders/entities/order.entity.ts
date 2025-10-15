@@ -1,13 +1,15 @@
 import { Column, Entity, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
-// ✅ Single order item structure
+// ✅ Single order item structure with variant info
 export interface OrderItem {
   product_id: string;
+  product_variant_id?: string | null;   // Optional variant product id
   product_name: string;
   price: number;
   quantity: number;
-  selected_size?: string;
-  subtotal?: number; // price * quantity
+  selected_size?: string | null;
+  selected_color?: string | null;
+  subtotal?: number; // price * quantity (can be computed before insert)
 }
 
 // ✅ Shipping address structure
@@ -24,13 +26,14 @@ export interface PaymentInfo {
   paid_at?: string;
 }
 
+// Your updated Order entity (as you shared)
 @Entity({ name: 'orders' })
 export class Order {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
   @Column({ name: 'user_id', type: 'varchar' })
-  user_Id!: string;
+  user_id!: string;
 
   @Column({ type: 'jsonb' })
   items!: OrderItem[];
@@ -45,7 +48,7 @@ export class Order {
   total!: number;
 
   @Column({ type: 'int', nullable: true })
-  total_price!: number;
+  total_price?: number;
 
   @Column({ default: 'pending' })
   status!: string;
@@ -59,19 +62,9 @@ export class Order {
   @Column({ type: 'jsonb', nullable: true })
   tracking_info?: any;
 
-  // ✅ Created timestamp
-  @CreateDateColumn({
-    type: 'timestamp',
-    name: 'created_at',
-    default: () => 'CURRENT_TIMESTAMP',
-  })
+  @CreateDateColumn({ type: 'timestamp', name: 'created_at', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;
 
-  // ✅ Updated timestamp (automatically updated on row update)
-  @UpdateDateColumn({
-    type: 'timestamp',
-    name: 'updated_at',
-    default: () => 'CURRENT_TIMESTAMP',
-  })
+  @UpdateDateColumn({ type: 'timestamp', name: 'updated_at', default: () => 'CURRENT_TIMESTAMP' })
   updated_at!: Date;
 }

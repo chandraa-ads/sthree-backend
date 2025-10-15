@@ -5,8 +5,15 @@ export class UserEntity {
   password: string;
   role: string;
   email_verified: boolean;
+
   profile_photo?: string;
   full_name?: string;
   phone?: string;
-  address?: string;
+  whatsapp_no?: string;       // added
+  address?: string[];         // updated to array
+
+  created_at?: Date;       // when user was created
+  updated_at?: Date;       // last update timestamp
+  last_login?: Date;       // last login timestamp
+  is_active?: boolean;     // account active status
 }

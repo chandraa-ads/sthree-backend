@@ -7,6 +7,7 @@ import {
   Body,
   UploadedFile,
   UseInterceptors,
+  Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -22,7 +23,6 @@ import { UpdateProductDto } from '../products/dto/update-product.dto';
 import { File } from 'multer'; // ✅ Multer type
 
 @ApiTags('Admin')
-@ApiBearerAuth()
 @Controller('admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
@@ -63,4 +63,11 @@ export class AdminController {
   ) {
     return this.adminService.updateProduct(id, dto, file);
   }
+
+  @Get('users/export')
+  @ApiOperation({ summary: 'Export all users as Excel file' })
+  async exportUsersExcel(@Res() res: Response) {
+    return this.adminService.exportUsersToExcel(res);
+  }
 }
+

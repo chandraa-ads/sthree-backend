@@ -4,11 +4,14 @@ export class UpdateProfileDto {
   @ApiProperty({ example: 'user-id-123', description: 'Unique ID of the user' })
   userId: string;
 
-  @ApiPropertyOptional({ example: 'Baby Name', description: 'Full name of the user' })
+  @ApiPropertyOptional({ example: 'sthree Name', description: 'Full name of the user' })
   full_name?: string;
 
-  @ApiPropertyOptional({ example: '9876543210', description: 'Phone number of the user' })
+  @ApiPropertyOptional({ example: '9876543210', description: 'Mobile phone number of the user' })
   phone?: string;
+
+  @ApiPropertyOptional({ example: '9876543210', description: 'WhatsApp number of the user' })
+  whatsapp_no?: string;
 
   @ApiPropertyOptional({
     type: [String],

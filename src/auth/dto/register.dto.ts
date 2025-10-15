@@ -6,7 +6,7 @@ export class RegisterDto {
   @IsEmail({}, { message: 'Invalid email format' })
   email: string;
 
-  @ApiProperty({ example: 'baby123', description: 'Unique username' })
+  @ApiProperty({ example: 'ruby', description: 'Unique username' })
   @IsNotEmpty({ message: 'Username is required' })
   username: string;
 
