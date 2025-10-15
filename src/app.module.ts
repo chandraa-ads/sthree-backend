@@ -24,6 +24,11 @@ import { CartModule } from './cart/cart.module';
         database: config.get<string>('DB_NAME'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: true,
+        extra: {
+  // Forces pg to use IPv4
+  max: 10, // optional: connection pool size
+}
+
       }),
     }),
 
