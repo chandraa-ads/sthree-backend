@@ -11,15 +11,16 @@ import { MailerService } from './mailer.service';
 
 @Module({
   imports: [
-    PassportModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'supersecret',
-      signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
+      signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '1d' },
     }),
     TypeOrmModule.forFeature([UserEntity]),
-    UsersModule
+    UsersModule,
   ],
   providers: [AuthService, JwtStrategy, MailerService],
-  controllers: [AuthController]
+  controllers: [AuthController],
+  exports: [AuthService], // allow other modules to use AuthService
 })
 export class AuthModule {}

@@ -141,32 +141,32 @@ export class ProductsController {
   }
 
 
-// ✅ Toggle wishlist automatically (no body needed)
-@Patch(':id/wishlist')
-@UseGuards(JwtAuthGuard)
-async toggleWishlist(@Param('id') product_id: string, @Req() req) {
-  // Pass user_id and product_id to service
-  return this.productsService.toggleWishlist({
-    user_id: req.user.id,
-    product_id,
-  });
-}
+  // ✅ Toggle wishlist automatically (no body needed)
+  @Patch(':id/wishlist')
+  @UseGuards(JwtAuthGuard)
+  async toggleWishlist(@Param('id') product_id: string, @Req() req) {
+    // Pass user_id and product_id to service
+    return this.productsService.toggleWishlist({
+      user_id: req.user.id,
+      product_id,
+    });
+  }
 
 
 
-@Get('user/:user_id/wishlist')
-@UseGuards(JwtAuthGuard)
-@ApiQuery({ name: 'page', required: false, type: Number })
-@ApiQuery({ name: 'limit', required: false, type: Number })
-async getUserWishlist(
-  @Param('user_id') userId: string,
-  @Query('page') page?: number,
-  @Query('limit') limit?: number,
-) {
-  if (!userId) throw new BadRequestException('User ID is required');
+  @Get('user/:user_id/wishlist')
+  @UseGuards(JwtAuthGuard)
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  async getUserWishlist(
+    @Param('user_id') userId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    if (!userId) throw new BadRequestException('User ID is required');
 
-  return this.productsService.getWishlistByUser(userId, page, limit);
-}
+    return this.productsService.getWishlistByUser(userId, page, limit);
+  }
 
 
 
@@ -213,8 +213,10 @@ async getUserWishlist(
   // Filter products
   @Get('filter')
   async filterProducts(@Query() filters: FilterProductsDto) {
+    if (filters.name) filters.name = filters.name.trim();
     return this.productsService.filterProducts(filters);
   }
+
 
   // Get single product
   @Get(':id')

@@ -60,16 +60,24 @@ async sendOtp(email: string, otp: string) {
 }
 
 
-  async sendResetCode(email: string, code: string) {
-    try {
-      await this.transporter.sendMail({
-        from: `"SThree" <${process.env.EMAIL_USER}>`,
-        to: email,
-        subject: 'Password Reset Code',
-        text: `Your password reset code is ${code}. Use it to reset your password.`,
-      });
-    } catch (error) {
-      throw new InternalServerErrorException('Failed to send reset email: ' + error.message);
-    }
+async sendResetCode(email: string, code: string) {
+  try {
+    await this.transporter.sendMail({
+      from: `"SThree" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: 'Password Reset OTP - SThree',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; background: #fff; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); padding: 30px;">
+          <h2 style="color: #2E86DE; text-align: center;">Reset Your Password</h2>
+          <p style="text-align: center;">Use the following OTP to reset your password:</p>
+          <div style="font-size: 32px; font-weight: bold; color: #2E86DE; text-align: center; letter-spacing: 8px;">${code}</div>
+          <p style="text-align: center; margin-top: 20px; color: #666;">This OTP will expire in <strong>10 minutes</strong>.</p>
+        </div>
+      `,
+    });
+  } catch (error) {
+    throw new InternalServerErrorException('Failed to send reset OTP email: ' + error.message);
   }
+}
+  
 }

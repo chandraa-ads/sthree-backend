@@ -916,80 +916,85 @@ async getWishlistByUser(
   }
 
 
-  async filterProducts(filterDto: FilterProductsDto) {
-    const {
-      category,
-      main_category,
-      sub_category,
-      brand,
-      color,
-      minPrice,
-      maxPrice,
-      rating,
-      name,
-      limit = 10,
-      page = 1,
-    } = filterDto;
+async filterProducts(filterDto: FilterProductsDto) {
+  const {
+    category,
+    main_category,
+    sub_category,
+    brand,
+    minPrice,
+    maxPrice,
+    rating,
+    name,
+    limit = 10,
+    page = 1,
+  } = filterDto;
 
-    const skip = (page - 1) * limit;
+  const skip = (page - 1) * limit;
 
-    const query = this.productRepository
-      .createQueryBuilder('product')
-      .leftJoinAndSelect('product.variants', 'variant')
-      .leftJoinAndSelect('product.reviews', 'review')
-      .leftJoinAndSelect('product.category_relation', 'category');
+  const query = this.productRepository
+    .createQueryBuilder('product')
+    .leftJoinAndSelect('product.variants', 'variant')
+    .leftJoinAndSelect('product.reviews', 'review')
+    .leftJoinAndSelect('product.category_relation', 'category');
 
-    // Filters
-    if (category) query.andWhere('product.category = :category', { category });
-    if (main_category)
-      query.andWhere('product.main_category = :main_category', { main_category });
-    if (sub_category)
-      query.andWhere('product.sub_category = :sub_category', { sub_category });
-    if (brand) query.andWhere('product.brand = :brand', { brand });
-    if (minPrice) query.andWhere('product.price >= :minPrice', { minPrice });
-    if (maxPrice) query.andWhere('product.price <= :maxPrice', { maxPrice });
-    if (name) query.andWhere('product.name ILIKE :name', { name: `%${name}%` });
+  // Filters
+  if (category) query.andWhere('product.category = :category', { category });
+  if (main_category)
+    query.andWhere('product.main_category = :main_category', { main_category });
+  if (sub_category)
+    query.andWhere('product.sub_category = :sub_category', { sub_category });
+  if (brand) query.andWhere('product.brand = :brand', { brand });
+  if (minPrice) query.andWhere('product.price >= :minPrice', { minPrice });
+  if (maxPrice) query.andWhere('product.price <= :maxPrice', { maxPrice });
 
-    query.andWhere('product.is_deleted = false');
-
-    // Add average rating as a subquery
-    query.addSelect((subQuery) => {
-      return subQuery
-        .select('COALESCE(AVG(review.rating), 0)', 'avg_rating')
-        .from(ProductReview, 'review')
-        .where('review.product_id = product.id');
-    }, 'average_rating');
-
-    if (rating) {
-      query.andWhere(
-        (qb) =>
-          `${qb
-            .subQuery()
-            .select('AVG(review.rating)')
-            .from(ProductReview, 'review')
-            .where('review.product_id = product.id')
-            .getQuery()} >= :rating`,
-        { rating },
-      );
-    }
-
-
-
-    query.skip(skip).take(limit);
-
-    const [products, total] = await query.getManyAndCount();
-
-    return {
-      total,
-      page,
-      limit,
-      data: products.map((p) => ({
-        ...p,
-        average_rating:
-          p['average_rating'] !== undefined ? Number(p['average_rating']) : 0,
-      })),
-    };
+  // ✅ Search across multiple fields
+  if (name) {
+    query.andWhere(
+      `(product.name ILIKE :name OR product.brand ILIKE :name OR product.main_category ILIKE :name OR product.sub_category ILIKE :name)`,
+      { name: `%${name}%` },
+    );
   }
+
+  query.andWhere('product.is_deleted = false');
+
+  // Add average rating as a subquery
+  query.addSelect((subQuery) => {
+    return subQuery
+      .select('COALESCE(AVG(review.rating), 0)', 'avg_rating')
+      .from(ProductReview, 'review')
+      .where('review.product_id = product.id');
+  }, 'average_rating');
+
+  if (rating) {
+    query.andWhere(
+      (qb) =>
+        `${qb
+          .subQuery()
+          .select('AVG(review.rating)')
+          .from(ProductReview, 'review')
+          .where('review.product_id = product.id')
+          .getQuery()} >= :rating`,
+      { rating },
+    );
+  }
+
+  query.skip(skip).take(limit);
+
+  const [products, total] = await query.getManyAndCount();
+
+  return {
+    total,
+    page,
+    limit,
+    data: products.map((p) => ({
+      ...p,
+      average_rating:
+        p['average_rating'] !== undefined ? Number(p['average_rating']) : 0,
+    })),
+  };
+}
+
 
   async findByCategory(mainCategory: string) {
     const products = await this.productRepository

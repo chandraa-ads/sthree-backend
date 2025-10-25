@@ -164,43 +164,136 @@ private async login(dto: LoginDto, role: Role) {
 
 
 
-  // ---------------- PASSWORD RESET ----------------
-  async forgotPassword(email: string, role: Role | 'user' | 'admin') {
-    const { data: user } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email)
-      .eq(role === 'user' ? 'role' : 'role', role === 'user' ? Role.USER : Role.ADMIN)
-      .maybeSingle();
+// ---------------- FORGOT PASSWORD ----------------
+async forgotPassword(email: string, role: Role | 'user' | 'admin') {
+  const userRole = role === 'user' ? Role.USER : Role.ADMIN;
 
-    if (!user) throw new NotFoundException('User not found');
+  // Check if user exists
+  const { data: user, error: findError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('email', email)
+    .eq('role', userRole)
+    .maybeSingle();
 
-    const reset_code = Math.floor(100000 + Math.random() * 900000).toString();
-    await supabase.from('password_resets').upsert({ email, reset_code }).single();
+  if (findError) {
+    console.error('Supabase user fetch error:', findError);
+    throw new InternalServerErrorException('Database error while finding user');
+  }
 
+  if (!user) throw new NotFoundException('No account found for this email');
+
+  // Generate OTP
+  const reset_code = Math.floor(100000 + Math.random() * 900000).toString();
+
+  // Remove old OTPs
+  await supabase.from('password_resets').delete().eq('email', email);
+
+  // Save new OTP (no expiry)
+  const { error: insertError } = await supabase
+    .from('password_resets')
+    .insert([{
+      email,
+      reset_code,
+      created_at: new Date().toISOString(),
+    }]);
+
+  if (insertError) {
+    console.error('Supabase insert error:', insertError);
+    throw new InternalServerErrorException('Failed to save reset code');
+  }
+
+  // Logging in IST
+  console.log(`[ForgotPassword] OTP generated: ${reset_code}`);
+  console.log(`[ForgotPassword] Server now (IST): ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`);
+
+  // Send OTP email
+  try {
     await this.mailerService.sendResetCode(email, reset_code);
-
-    return { message: 'Password reset code sent to email' };
+  } catch (mailError) {
+    console.error('Email send error:', mailError);
+    throw new InternalServerErrorException('Failed to send reset code email');
   }
 
-  async resetPassword(email: string, reset_code: string, new_password: string) {
-    const { data: reset } = await supabase
-      .from('password_resets')
-      .select('*')
-      .eq('email', email)
-      .eq('reset_code', reset_code)
-      .maybeSingle();
+  return { message: 'Password reset OTP sent successfully' };
+}
 
-    if (!reset) throw new UnauthorizedException('Invalid reset code');
+// ---------------- VERIFY RESET CODE ----------------
+async verifyResetCode(email: string, reset_code: string) {
+  const { data: resetRecords, error: fetchError } = await supabase
+    .from('password_resets')
+    .select('*')
+    .eq('email', email)
+    .order('created_at', { ascending: false })
+    .limit(1);
 
-    const hashedPassword = await bcrypt.hash(new_password, 10);
-    const { error } = await supabase.from('users').update({ password: hashedPassword }).eq('email', email);
-
-    if (error) throw new InternalServerErrorException('Failed to reset password');
-    await supabase.from('password_resets').delete().eq('email', email);
-
-    return { message: 'Password reset successful' };
+  if (fetchError) {
+    console.error(fetchError);
+    throw new InternalServerErrorException('Database error');
   }
+
+  const resetRecord = resetRecords?.[0];
+  if (!resetRecord) throw new UnauthorizedException('Invalid or incorrect OTP');
+
+  // Logging in IST
+  console.log(`[VerifyResetCode] OTP in DB: ${resetRecord.reset_code}`);
+  console.log(`[VerifyResetCode] Server now (IST): ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`);
+
+  // Check OTP match
+  if (resetRecord.reset_code.trim() !== reset_code.trim()) {
+    throw new UnauthorizedException('Invalid or incorrect OTP');
+  }
+
+  return { message: 'OTP verified successfully. You can now reset your password.' };
+}
+
+// ---------------- RESET PASSWORD ----------------
+async resetPassword(email: string, reset_code: string, new_password: string) {
+  const { data: resetRecords, error: fetchError } = await supabase
+    .from('password_resets')
+    .select('*')
+    .eq('email', email)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (fetchError) {
+    console.error(fetchError);
+    throw new InternalServerErrorException('Database error');
+  }
+
+  const resetRecord = resetRecords?.[0];
+  if (!resetRecord || resetRecord.reset_code.trim() !== reset_code.trim()) {
+    throw new UnauthorizedException('Invalid or incorrect OTP');
+  }
+
+  // Logging in IST
+  console.log(`[ResetPassword] OTP in DB: ${resetRecord.reset_code}`);
+  console.log(`[ResetPassword] Server now (IST): ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`);
+
+  // Hash new password
+  const hashedPassword = await bcrypt.hash(new_password, 10);
+
+  // Update user password
+  const { error: updateError } = await supabase
+    .from('users')
+    .update({ password: hashedPassword })
+    .eq('email', email);
+
+  if (updateError) {
+    console.error('Supabase password update error:', updateError);
+    throw new InternalServerErrorException('Failed to reset password');
+  }
+
+  // Delete OTP after success
+  await supabase.from('password_resets').delete().eq('email', email);
+
+  return { message: 'Password reset successfully. You can now log in.' };
+}
+
+
+
+
+
 
   // ---------------- GOOGLE AUTH ----------------
 // auth.service.ts

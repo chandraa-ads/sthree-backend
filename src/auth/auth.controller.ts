@@ -17,7 +17,9 @@ import { Role } from '../common/enums/role.enum';
 import { FacebookLoginDto } from './dto/facebook-login.dto';
 import { LogoutUserDto } from './dto/logout-user.dto';
 import { Request } from 'express';
-
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyResetCodeDto } from './dto/verify-reset-code.dto';
 export interface AuthenticatedRequest extends Request {
   user?: {
     sub: string;
@@ -28,6 +30,7 @@ export interface AuthenticatedRequest extends Request {
     exp?: number;
   };
 }
+
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -73,21 +76,57 @@ export class AuthController {
     return this.authService.facebookAuth(facebookLoginDto.accessToken);
   }
 
-  @Post('user/forgot-password')
-  @ApiOperation({ summary: 'Request password reset OTP for user' })
-  async forgotPassword(@Body('email') email: string) {
-    return this.authService.forgotPassword(email, 'user');
-  }
 
-  @Post('user/reset-password')
-  @ApiOperation({ summary: 'Reset password using OTP' })
-  async resetPassword(@Body() body: any) {
-    return this.authService.resetPassword(
-      body.email,
-      body.reset_code,
-      body.new_password,
-    );
-  }
+
+// ---------------- USER PASSWORD FLOW ----------------
+// USER
+// ---------------- USER PASSWORD FLOW ----------------
+@Post('user/forgot-password')
+@ApiOperation({ summary: 'Request password reset OTP for user' })
+@ApiBody({ schema: { example: { email: 'user@example.com' } } })
+async forgotPasswordUser(@Body('email') email: string) {
+  return this.authService.forgotPassword(email, 'user');
+}
+
+@Post('user/verify-reset-code')
+@ApiOperation({ summary: 'Verify OTP for password reset (user)' })
+@ApiBody({ type: VerifyResetCodeDto })
+@ApiResponse({ status: 200, description: 'OTP verified successfully' })
+async verifyResetCodeUser(@Body() body: VerifyResetCodeDto) {
+  return this.authService.verifyResetCode(body.email, body.reset_code);
+}
+
+@Post('user/reset-password')
+@ApiOperation({ summary: 'Reset password using OTP (user)' })
+@ApiBody({ type: ResetPasswordDto })
+@ApiResponse({ status: 200, description: 'Password reset successful' })
+async resetPasswordUser(@Body() body: ResetPasswordDto) {
+  return this.authService.resetPassword(body.email, body.reset_code, body.new_password);
+}
+
+// ---------------- ADMIN PASSWORD FLOW ----------------
+@Post('admin/forgot-password')
+@ApiOperation({ summary: 'Request password reset OTP for admin' })
+@ApiBody({ schema: { example: { email: 'admin@example.com' } } })
+async forgotPasswordAdmin(@Body('email') email: string) {
+  return this.authService.forgotPassword(email, 'admin');
+}
+
+@Post('admin/verify-reset-code')
+@ApiOperation({ summary: 'Verify OTP for password reset (admin)' })
+@ApiBody({ type: VerifyResetCodeDto })
+@ApiResponse({ status: 200, description: 'OTP verified successfully' })
+async verifyResetCodeAdmin(@Body() body: VerifyResetCodeDto) {
+  return this.authService.verifyResetCode(body.email, body.reset_code);
+}
+
+@Post('admin/reset-password')
+@ApiOperation({ summary: 'Reset password using OTP (admin)' })
+@ApiBody({ type: ResetPasswordDto })
+@ApiResponse({ status: 200, description: 'Password reset successful' })
+async resetPasswordAdmin(@Body() body: ResetPasswordDto) {
+  return this.authService.resetPassword(body.email, body.reset_code, body.new_password);
+}
 
   // ---------------- ADMIN ----------------
   @Post('admin/register')
@@ -156,6 +195,7 @@ export class AuthController {
 
     // Example: revoke refresh tokens here if used
     // await this.authService.logout(userId);
+    
 
     return {
       message: `User ${userId} logged out successfully`,
