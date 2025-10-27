@@ -7,10 +7,8 @@ services:
       npm install
       npm run build
       echo "---- Build output ----"
-      ls -R ../dist || echo "No dist folder found!"
-    startCommand: node ../dist/main.js
+      ls -R dist || echo "No dist folder found!"
+    startCommand: node dist/main.js
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 3000
