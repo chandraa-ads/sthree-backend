@@ -6,9 +6,11 @@ import {
 import { supabaseAdmin } from '../config/database.config';
 import { CreateProductDto } from '../products/dto/create-product.dto';
 import { UpdateProductDto } from '../products/dto/update-product.dto';
-import { File } from 'multer';
+import * as multer from 'multer';
+type File = Express.Multer.File;
 import * as ExcelJS from 'exceljs';
 import { Response } from 'express';
+import { Res } from '@nestjs/common';
 @Injectable()
 export class AdminService {
   // Dashboard

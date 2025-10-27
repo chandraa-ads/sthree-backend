@@ -9,4 +9,6 @@ export class UserResponseDto {
   phone?: string;
   whatsapp_no?: string;       // added
   address?: string[];         // updated to array
+  dob?: string;
+  gender?: string;
 }

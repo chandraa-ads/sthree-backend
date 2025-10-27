@@ -41,8 +41,17 @@ export class User {
   @Column({ nullable: true })
   whatsapp_no?: string;
 
-  @Column({ nullable: true, type: 'text' })
-  address?: string;
+  // ✅ replaced single address with multiple addresses
+  @Column('text', { array: true, nullable: true })
+  addresses?: string[];
+
+  // ✅ added date of birth
+  @Column({ type: 'date', nullable: true })
+  dob?: string;
+
+  // ✅ added gender field
+  @Column({ nullable: true })
+  gender?: string;
 
   @Column({ nullable: true })
   profile_photo?: string;
@@ -58,8 +67,10 @@ export class User {
 
   @UpdateDateColumn()
   updated_at: Date;
-    wishlist: any;
+
+  wishlist: any;
 }
+
 
 /** ================= CATEGORY ENTITY ================= */
 @Entity({ name: 'categories' })

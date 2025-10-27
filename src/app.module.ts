@@ -1,3 +1,4 @@
+// app.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -7,11 +8,12 @@ import { ProductsModule } from './products/products.module';
 import { OrdersModule } from './orders/orders.module';
 import { AuthModule } from './auth/auth.module';
 import { CartModule } from './cart/cart.module';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -24,15 +26,9 @@ import { CartModule } from './cart/cart.module';
         database: config.get<string>('DB_NAME'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: false,
-
-        extra: {
-  // Forces pg to use IPv4
-  host: config.get<string>('DB_HOST'),
-}
-
+        extra: { host: config.get<string>('DB_HOST') }, // IPv4 fix
       }),
     }),
-
     AuthModule,
     AdminModule,
     UsersModule,
@@ -40,5 +36,7 @@ import { CartModule } from './cart/cart.module';
     CartModule,
     OrdersModule,
   ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}

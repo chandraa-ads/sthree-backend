@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-import { File } from 'multer';
+import * as multer from 'multer';
+type File = Express.Multer.File;
 
 @Injectable()
 export class UsersService {
@@ -19,14 +20,16 @@ export class UsersService {
   }
 
 async updateProfile(profile_photo: File, dto: UpdateProfileDto) {
-  const { userId, full_name, phone, whatsapp_no, addresses } = dto;
+  const { userId, full_name, phone, whatsapp_no, addresses,dob,gender } = dto;
 
   if (!userId) throw new InternalServerErrorException('UserId is required');
 
   const updateData: any = {};
   if (full_name) updateData.full_name = full_name;
   if (phone) updateData.phone = phone;
-  if (whatsapp_no) updateData.whatsapp_no = whatsapp_no; // <-- Added here
+  if (whatsapp_no) updateData.whatsapp_no = whatsapp_no; 
+   if (dob) updateData.dob = dob;              // ✅ added
+  if (gender) updateData.gender = gender;
 
   // Addresses processing as before
   if (addresses) {

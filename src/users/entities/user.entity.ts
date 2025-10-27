@@ -12,6 +12,8 @@ export class UserEntity {
   whatsapp_no?: string;       // added
   address?: string[];         // updated to array
 
+  dob?: string;           // ISO format (YYYY-MM-DD)
+  gender?: string;
   created_at?: Date;       // when user was created
   updated_at?: Date;       // last update timestamp
   last_login?: Date;       // last login timestamp

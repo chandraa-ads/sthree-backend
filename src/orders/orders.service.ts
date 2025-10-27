@@ -9,6 +9,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { NotificationService } from '../notifications/notification.service';
 import * as ExcelJS from 'exceljs';
 import { Response } from 'express';
+import { Res } from '@nestjs/common';
 
 @Injectable()
 export class OrdersService {

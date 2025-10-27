@@ -20,12 +20,13 @@ import {
 import { AdminService } from './admin.service';
 import { CreateProductDto } from '../products/dto/create-product.dto';
 import { UpdateProductDto } from '../products/dto/update-product.dto';
-import { File } from 'multer'; // ✅ Multer type
+import { Express } from 'express';
+
 
 @ApiTags('Admin')
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(private readonly adminService: AdminService) { }
 
   @Get('dashboard')
   @ApiOperation({ summary: 'Get admin dashboard stats' })
@@ -44,7 +45,7 @@ export class AdminController {
   @ApiConsumes('multipart/form-data')
   @ApiBody({ type: CreateProductDto })
   @ApiOperation({ summary: 'Add new product with image' })
-  addProduct(@Body() dto: CreateProductDto, @UploadedFile() file: File) {
+  addProduct(@Body() dto: CreateProductDto, @UploadedFile() file: Express.Multer.File) {
     return this.adminService.addProduct(dto, file);
   }
 
@@ -59,15 +60,15 @@ export class AdminController {
   updateProduct(
     @Param('id') id: string,
     @Body() dto: UpdateProductDto,
-    @UploadedFile() file?: File,
+    @UploadedFile() file?: Express.Multer.File,
   ) {
     return this.adminService.updateProduct(id, dto, file);
   }
 
   @Get('users/export')
   @ApiOperation({ summary: 'Export all users as Excel file' })
-  async exportUsersExcel(@Res() res: Response) {
-    return this.adminService.exportUsersToExcel(res);
+  exportUsers(@Res() res: Response) {
+    return this.adminService.exportUsersToExcel(res as any);
   }
 }
 

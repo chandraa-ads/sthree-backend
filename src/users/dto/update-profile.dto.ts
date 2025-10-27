@@ -20,6 +20,18 @@ export class UpdateProfileDto {
   })
   addresses?: string[];
 
+
+  @ApiPropertyOptional({
+    example: '1998-05-21',
+    description: 'Date of birth in YYYY-MM-DD format',
+  })
+  dob?: string;
+
+  @ApiPropertyOptional({
+    example: 'female',
+    description: 'Gender of the user (male, female, other)',
+  })
+  gender?: string;
   @ApiPropertyOptional({
     type: 'string',
     format: 'binary',

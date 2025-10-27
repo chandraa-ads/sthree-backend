@@ -13,6 +13,7 @@ import { Repository } from 'typeorm';
 import { Product, ProductReview } from './entities/product.entity';
 import * as ExcelJS from 'exceljs';
 import { Response } from 'express';
+import { Res } from '@nestjs/common';
 import { FilterProductsDto } from './dto/filter-products.dto';
 export interface ProductVariantImage {
   image_url: string;
@@ -329,9 +330,10 @@ export class ProductsService {
         product: productResponse,
       };
     } catch (err) {
-      console.error('Create product error:', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error('Create product error:', errorMessage);
       throw new InternalServerErrorException(
-        err.message || 'Failed to create product',
+        errorMessage || 'Failed to create product',
       );
     }
   }
@@ -494,9 +496,10 @@ export class ProductsService {
         product: productResponse,
       };
     } catch (err) {
-      console.error('Product update error:', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error('Product update error:', errorMessage);
       throw new InternalServerErrorException(
-        err.message || 'Failed to update product',
+        errorMessage || 'Failed to update product',
       );
     }
   }
@@ -797,8 +800,9 @@ async getWishlistByUser(
         },
       };
     } catch (err) {
-      console.error('Error adding review:', err.message);
-      throw new InternalServerErrorException(err.message || 'Failed to add review');
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error('Error adding review:', errorMessage);
+      throw new InternalServerErrorException(errorMessage  || 'Failed to add review');
     }
   }
 
@@ -831,8 +835,9 @@ async getWishlistByUser(
           : { id: null, name: 'Unknown' },
       }));
     } catch (err) {
-      console.error('Error fetching reviews:', err.message);
-      throw new InternalServerErrorException('Failed to fetch reviews');
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error('Error fetching reviews:', errorMessage);
+      throw new InternalServerErrorException(errorMessage  || 'Failed to fetch reviews');
     }
   }
 
@@ -854,8 +859,9 @@ async getWishlistByUser(
         count: parseInt(avgData.count, 10) || 0,
       };
     } catch (err) {
-      console.error('Error getting average rating:', err.message);
-      throw new InternalServerErrorException('Failed to calculate average rating');
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error('Error getting average rating:', errorMessage);
+      throw new InternalServerErrorException(errorMessage  || 'Failed to calculate average rating');
     }
   }
 

@@ -1,37 +1,40 @@
+// main.ts
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { ConfigService } from '@nestjs/config';
+import { INestApplication } from '@nestjs/common';
 
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-
-  // Use ConfigService to get env variables
+async function bootstrap(): Promise<void> {
+  const app: INestApplication = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+  });
   const configService = app.get(ConfigService);
 
-  // Enable CORS dynamically
+  const frontendUrl = configService.get<string>('FRONTEND_URL') || '*';
+  const port = configService.get<number>('PORT') || 3000;
+
+  // ✅ CORS setup
   app.enableCors({
-    origin: configService.get<string>('FRONTEND_URL') || '*', // allow frontend domain or all
+    origin: frontendUrl,
     credentials: true,
   });
 
-  // Helmet for security headers
+  // ✅ Security middleware
   app.use(helmet());
 
-  // Disable COOP/COEP to fix warnings for certain cross-origin requests
+  // ✅ Disable COOP/COEP headers for dev (avoids browser isolation issues)
   app.use((req, res, next) => {
-    res.removeHeader('Cross-Origin-Opener-Policy');
-    res.removeHeader('Cross-Origin-Embedder-Policy');
     res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
     res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
     next();
   });
 
-  // Swagger setup
+  // ✅ Swagger setup
   const swaggerConfig = new DocumentBuilder()
     .setTitle('E-Commerce API')
-    .setDescription('User & Admin Panel API')
+    .setDescription('User & Admin Panel API Documentation')
     .setVersion('1.0')
     .addBearerAuth()
     .build();
@@ -39,10 +42,11 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api', app, document);
 
-  // Dynamic port binding for Render
-  const port = configService.get<number>('PORT') || 3000;
-  await app.listen(port, () => {
-    console.log(`🚀 Server running on port ${port}`);
-  });
+  // ✅ Start the server
+  await app
+    .listen(port)
+    .then(() => console.log(`🚀 Server running at http://localhost:${port}`))
+    .catch((err) => console.error('❌ Failed to start server:', err));
 }
+
 bootstrap();

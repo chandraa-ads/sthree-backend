@@ -148,8 +148,7 @@ private async login(dto: LoginDto, role: Role) {
 
   const token = jwt.sign(
     { sub: data.id, role: data.role, email: data.email, username: data.username },
-    this.configService.get<string>('JWT_SECRET'),
-    { expiresIn: '7d' },
+    this.configService.get<string>('JWT_SECRET')!,    { expiresIn: '7d' },
   );
 
   return {
@@ -396,8 +395,7 @@ async googleLoginOrRegister(idToken: string, role: 'user' | 'admin') {
       username: finalUser.username,
       role: finalUser.role,
     },
-    this.configService.get<string>('JWT_SECRET'),
-    { expiresIn: '7d' },
+    this.configService.get<string>('JWT_SECRET')!,    { expiresIn: '7d' },
   );
 
   return {
@@ -455,7 +453,7 @@ async facebookAuth(accessToken: string) {
 
   const token = jwt.sign(
     { sub: user.id, role: user.role, email: user.email, username: user.username },
-    process.env.JWT_SECRET,
+    process.env.JWT_SECRET || 'default_secret',
     { expiresIn: '7d' },
   );
 

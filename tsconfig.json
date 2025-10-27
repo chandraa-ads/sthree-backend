@@ -30,6 +30,6 @@
   }
 },
 
-  "include": ["src/**/*", "ormconfig.ts", "src/ormconfig.ts"],
+  "include": ["src/**/*", "src/ormconfig.ts", "src/ormconfig.ts"],
   "exclude": ["node_modules", "dist"]
 }
