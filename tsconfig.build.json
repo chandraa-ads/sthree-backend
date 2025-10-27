@@ -5,12 +5,7 @@
     "moduleResolution": "NodeNext",
     "outDir": "./dist",
     "declaration": false,
-    "sourceMap": true,
-    "removeComments": true,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "strict": true,
-    "noImplicitAny": false
+    "sourceMap": true
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist", "test", "**/*spec.ts"]
