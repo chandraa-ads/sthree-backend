@@ -6,7 +6,7 @@ services:
     buildCommand: |
       npm install
       npm run build
-      echo "---- Build output ----"
+      echo "Build output:"
       ls -R dist || echo "No dist folder found!"
     startCommand: node dist/main.js
     envVars:
