@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: sthree-backend
+    env: node
+    buildCommand: npm run build
+    startCommand: node dist/main.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
