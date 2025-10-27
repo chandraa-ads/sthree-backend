@@ -3,7 +3,10 @@ services:
     name: sthree-backend
     env: node
     plan: free
-    buildCommand: npm run build
+    buildCommand: |
+      npm run build
+      echo "---- Build output ----"
+      ls -R dist || echo "No dist folder found!"
     startCommand: node dist/main.js
     envVars:
       - key: NODE_ENV
