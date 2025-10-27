@@ -13,7 +13,6 @@ import { Repository } from 'typeorm';
 import { Product, ProductReview } from './entities/product.entity';
 import * as ExcelJS from 'exceljs';
 import { Response } from 'express';
-import { Res } from '@nestjs/common';
 import { FilterProductsDto } from './dto/filter-products.dto';
 export interface ProductVariantImage {
   image_url: string;
@@ -610,102 +609,102 @@ export class ProductsService {
 
 
 
-async toggleWishlist(body: { user_id: string; product_id: string }) {
-  const { user_id, product_id } = body;
-  const supabase = this.supabaseService.client;
-  const timestamp = new Date().toISOString();
+  async toggleWishlist(body: { user_id: string; product_id: string }) {
+    const { user_id, product_id } = body;
+    const supabase = this.supabaseService.client;
+    const timestamp = new Date().toISOString();
 
-  // 1️⃣ Check if wishlist entry exists
-  const { data: existing, error: selectError } = await supabase
-    .from('wishlist')
-    .select('*')
-    .eq('user_id', user_id)
-    .eq('product_id', product_id)
-    .maybeSingle();
-
-  if (selectError) throw new InternalServerErrorException(selectError.message);
-
-  let wishlistStatus: boolean;
-
-  if (existing) {
-    // ❌ Remove from wishlist table
-    const { error: deleteError } = await supabase
+    // 1️⃣ Check if wishlist entry exists
+    const { data: existing, error: selectError } = await supabase
       .from('wishlist')
-      .delete()
-      .eq('id', existing.id);
+      .select('*')
+      .eq('user_id', user_id)
+      .eq('product_id', product_id)
+      .maybeSingle();
 
-    if (deleteError) throw new InternalServerErrorException(deleteError.message);
+    if (selectError) throw new InternalServerErrorException(selectError.message);
 
-    wishlistStatus = false;
-  } else {
-    // ✅ Add to wishlist table
-    const { error: insertError } = await supabase
-      .from('wishlist')
-      .insert({
-        user_id,
-        product_id,
-        created_at: timestamp,
-        updated_at: timestamp,
-      });
+    let wishlistStatus: boolean;
 
-    if (insertError) throw new InternalServerErrorException(insertError.message);
+    if (existing) {
+      // ❌ Remove from wishlist table
+      const { error: deleteError } = await supabase
+        .from('wishlist')
+        .delete()
+        .eq('id', existing.id);
 
-    wishlistStatus = true;
+      if (deleteError) throw new InternalServerErrorException(deleteError.message);
+
+      wishlistStatus = false;
+    } else {
+      // ✅ Add to wishlist table
+      const { error: insertError } = await supabase
+        .from('wishlist')
+        .insert({
+          user_id,
+          product_id,
+          created_at: timestamp,
+          updated_at: timestamp,
+        });
+
+      if (insertError) throw new InternalServerErrorException(insertError.message);
+
+      wishlistStatus = true;
+    }
+
+    // 2️⃣ Update the `wishlist` column in the products table
+    const { error: updateError } = await supabase
+      .from('products')
+      .update({ wishlist: wishlistStatus, updated_at: timestamp })
+      .eq('id', product_id);
+
+    if (updateError) throw new InternalServerErrorException(updateError.message);
+
+    return {
+      message: wishlistStatus ? 'Added to wishlist' : 'Removed from wishlist',
+      wishlist: wishlistStatus,
+      product_id,
+    };
   }
 
-  // 2️⃣ Update the `wishlist` column in the products table
-  const { error: updateError } = await supabase
-    .from('products')
-    .update({ wishlist: wishlistStatus, updated_at: timestamp })
-    .eq('id', product_id);
-
-  if (updateError) throw new InternalServerErrorException(updateError.message);
-
-  return {
-    message: wishlistStatus ? 'Added to wishlist' : 'Removed from wishlist',
-    wishlist: wishlistStatus,
-    product_id,
-  };
-}
 
 
 
 
 
+  async getWishlistByUser(
+    userId: string,
+    page?: number,
+    limit?: number,
+  ) {
+    const supabase = this.supabaseService.client;
 
-async getWishlistByUser(
-  userId: string,
-  page?: number,
-  limit?: number,
-) {
-  const supabase = this.supabaseService.client;
+    const currentPage = page && page > 0 ? page : 1;
+    const currentLimit = limit && limit > 0 ? limit : 10;
+    const offset = (currentPage - 1) * currentLimit;
 
-  const currentPage = page && page > 0 ? page : 1;
-  const currentLimit = limit && limit > 0 ? limit : 10;
-  const offset = (currentPage - 1) * currentLimit;
-
-  const { data, count, error } = await supabase
-    .from('wishlist')
-    .select(`
+    const { data, count, error } = await supabase
+      .from('wishlist')
+      .select(`
       id,
       product_id,
       created_at,
       updated_at,
       product:products(*)  -- fetch product details
     `, { count: 'exact' })
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .range(offset, offset + currentLimit - 1);
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + currentLimit - 1);
 
-  if (error) throw new InternalServerErrorException(error.message);
+    if (error) throw new InternalServerErrorException(error.message);
 
-  return {
-    total: count || 0,
-    page: currentPage,
-    limit: currentLimit,
-    data: data || [],
-  };
-}
+    return {
+      total: count || 0,
+      page: currentPage,
+      limit: currentLimit,
+      data: data || [],
+    };
+  }
 
 
 
@@ -802,7 +801,7 @@ async getWishlistByUser(
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       console.error('Error adding review:', errorMessage);
-      throw new InternalServerErrorException(errorMessage  || 'Failed to add review');
+      throw new InternalServerErrorException(errorMessage || 'Failed to add review');
     }
   }
 
@@ -837,7 +836,7 @@ async getWishlistByUser(
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       console.error('Error fetching reviews:', errorMessage);
-      throw new InternalServerErrorException(errorMessage  || 'Failed to fetch reviews');
+      throw new InternalServerErrorException(errorMessage || 'Failed to fetch reviews');
     }
   }
 
@@ -860,8 +859,8 @@ async getWishlistByUser(
       };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
-      console.error('Error getting average rating:', errorMessage);
-      throw new InternalServerErrorException(errorMessage  || 'Failed to calculate average rating');
+      console.error('Error getting average rating:', err.message);
+      throw new InternalServerErrorException(errorMessage || 'Failed to calculate average rating');
     }
   }
 
@@ -885,9 +884,10 @@ async getWishlistByUser(
     ];
 
     // Add rows
+    // Add rows
     products.data.forEach((product) => {
-      // Flatten variants info as a string
-      const variantsStr = product.variants
+      // Flatten variants info as a string (handle undefined safely)
+      const variantsStr = (product.variants ?? [])
         .map(
           (v) =>
             `Color: ${v.color || 'N/A'}, Size: ${v.size || 'N/A'}, Price: ${v.price ?? 'N/A'
@@ -895,7 +895,7 @@ async getWishlistByUser(
         )
         .join('; ');
 
-      // Join images URLs
+      // Join image URLs safely
       const imagesStr = product.images?.join('; ') || '';
 
       worksheet.addRow({
@@ -908,6 +908,7 @@ async getWishlistByUser(
         images: imagesStr,
       });
     });
+
 
     // Set headers for download
     res.setHeader(
@@ -922,84 +923,84 @@ async getWishlistByUser(
   }
 
 
-async filterProducts(filterDto: FilterProductsDto) {
-  const {
-    category,
-    main_category,
-    sub_category,
-    brand,
-    minPrice,
-    maxPrice,
-    rating,
-    name,
-    limit = 10,
-    page = 1,
-  } = filterDto;
+  async filterProducts(filterDto: FilterProductsDto) {
+    const {
+      category,
+      main_category,
+      sub_category,
+      brand,
+      minPrice,
+      maxPrice,
+      rating,
+      name,
+      limit = 10,
+      page = 1,
+    } = filterDto;
 
-  const skip = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
-  const query = this.productRepository
-    .createQueryBuilder('product')
-    .leftJoinAndSelect('product.variants', 'variant')
-    .leftJoinAndSelect('product.reviews', 'review')
-    .leftJoinAndSelect('product.category_relation', 'category');
+    const query = this.productRepository
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.variants', 'variant')
+      .leftJoinAndSelect('product.reviews', 'review')
+      .leftJoinAndSelect('product.category_relation', 'category');
 
-  // Filters
-  if (category) query.andWhere('product.category = :category', { category });
-  if (main_category)
-    query.andWhere('product.main_category = :main_category', { main_category });
-  if (sub_category)
-    query.andWhere('product.sub_category = :sub_category', { sub_category });
-  if (brand) query.andWhere('product.brand = :brand', { brand });
-  if (minPrice) query.andWhere('product.price >= :minPrice', { minPrice });
-  if (maxPrice) query.andWhere('product.price <= :maxPrice', { maxPrice });
+    // Filters
+    if (category) query.andWhere('product.category = :category', { category });
+    if (main_category)
+      query.andWhere('product.main_category = :main_category', { main_category });
+    if (sub_category)
+      query.andWhere('product.sub_category = :sub_category', { sub_category });
+    if (brand) query.andWhere('product.brand = :brand', { brand });
+    if (minPrice) query.andWhere('product.price >= :minPrice', { minPrice });
+    if (maxPrice) query.andWhere('product.price <= :maxPrice', { maxPrice });
 
-  // ✅ Search across multiple fields
-  if (name) {
-    query.andWhere(
-      `(product.name ILIKE :name OR product.brand ILIKE :name OR product.main_category ILIKE :name OR product.sub_category ILIKE :name)`,
-      { name: `%${name}%` },
-    );
+    // ✅ Search across multiple fields
+    if (name) {
+      query.andWhere(
+        `(product.name ILIKE :name OR product.brand ILIKE :name OR product.main_category ILIKE :name OR product.sub_category ILIKE :name)`,
+        { name: `%${name}%` },
+      );
+    }
+
+    query.andWhere('product.is_deleted = false');
+
+    // Add average rating as a subquery
+    query.addSelect((subQuery) => {
+      return subQuery
+        .select('COALESCE(AVG(review.rating), 0)', 'avg_rating')
+        .from(ProductReview, 'review')
+        .where('review.product_id = product.id');
+    }, 'average_rating');
+
+    if (rating) {
+      query.andWhere(
+        (qb) =>
+          `${qb
+            .subQuery()
+            .select('AVG(review.rating)')
+            .from(ProductReview, 'review')
+            .where('review.product_id = product.id')
+            .getQuery()} >= :rating`,
+        { rating },
+      );
+    }
+
+    query.skip(skip).take(limit);
+
+    const [products, total] = await query.getManyAndCount();
+
+    return {
+      total,
+      page,
+      limit,
+      data: products.map((p) => ({
+        ...p,
+        average_rating:
+          p['average_rating'] !== undefined ? Number(p['average_rating']) : 0,
+      })),
+    };
   }
-
-  query.andWhere('product.is_deleted = false');
-
-  // Add average rating as a subquery
-  query.addSelect((subQuery) => {
-    return subQuery
-      .select('COALESCE(AVG(review.rating), 0)', 'avg_rating')
-      .from(ProductReview, 'review')
-      .where('review.product_id = product.id');
-  }, 'average_rating');
-
-  if (rating) {
-    query.andWhere(
-      (qb) =>
-        `${qb
-          .subQuery()
-          .select('AVG(review.rating)')
-          .from(ProductReview, 'review')
-          .where('review.product_id = product.id')
-          .getQuery()} >= :rating`,
-      { rating },
-    );
-  }
-
-  query.skip(skip).take(limit);
-
-  const [products, total] = await query.getManyAndCount();
-
-  return {
-    total,
-    page,
-    limit,
-    data: products.map((p) => ({
-      ...p,
-      average_rating:
-        p['average_rating'] !== undefined ? Number(p['average_rating']) : 0,
-    })),
-  };
-}
 
 
   async findByCategory(mainCategory: string) {

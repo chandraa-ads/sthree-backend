@@ -4,9 +4,9 @@ services:
     env: node
     plan: free
     buildCommand: |
-      npm install
+      npm install --legacy-peer-deps
       npm run build
-      echo "Build output:"
+      echo "Build complete. Checking dist:"
       ls -R dist || echo "No dist folder found!"
     startCommand: node dist/main.js
     envVars:

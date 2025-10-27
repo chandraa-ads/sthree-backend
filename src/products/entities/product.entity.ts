@@ -94,7 +94,6 @@ export class Category {
   updated_at: Date;
 }
 
-/** ================= PRODUCT ENTITY ================= */
 @Index('IDX_PRODUCTS_NAME', ['name'])
 @Entity({ name: 'products' })
 export class Product {
@@ -179,34 +178,34 @@ export class Product {
   @Column({ default: false })
   is_deleted: boolean;
 
-
   @Column({ type: 'boolean', default: false })
-  wishlist: boolean; 
-  
+  wishlist: boolean;
+
   @Column('float', { nullable: true, default: 0 })
   average_rating?: number;
 
   /** RELATIONS */
-  @ManyToOne(() => User, { nullable: true })
+
+  @ManyToOne(() => User, { nullable: true, eager: false })
   @JoinColumn({ name: 'created_by' })
-  created_by_user: User;
+  created_by_user?: User;
 
-  @ManyToOne(() => User, { nullable: true })
+  @ManyToOne(() => User, { nullable: true, eager: false })
   @JoinColumn({ name: 'updated_by' })
-  updated_by_user: User;
+  updated_by_user?: User;
 
-  @ManyToOne(() => Category, { nullable: true })
+  @ManyToOne(() => Category, { nullable: true, eager: false })
   @JoinColumn({ name: 'category_id' })
-  category_relation: Category;
+  category_relation?: Category;
 
-  @OneToMany(() => ProductVariant, (variant) => variant.product, { cascade: true, eager: true })
-  variants: ProductVariant[];
+  @OneToMany(() => ProductVariant, (variant) => variant.product, { cascade: true, eager: false })
+  variants?: ProductVariant[];
 
-  @OneToMany(() => ProductReview, (review) => review.product, { cascade: true, eager: true })
-  reviews: ProductReview[];
+  @OneToMany(() => ProductReview, (review) => review.product, { cascade: true, eager: false })
+  reviews?: ProductReview[];
 
-  @OneToMany(() => ProductImage, (image) => image.product, { cascade: true })
-  product_images: ProductImage[];
+  @OneToMany(() => ProductImage, (image) => image.product, { cascade: true, eager: false })
+  product_images?: ProductImage[];
 
   @CreateDateColumn()
   created_at: Date;
@@ -214,7 +213,6 @@ export class Product {
   @UpdateDateColumn()
   updated_at: Date;
 }
-
 /** ================= PRODUCT VARIANT ENTITY ================= */
 @Entity({ name: 'product_variants' })
 export class ProductVariant {
