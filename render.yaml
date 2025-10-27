@@ -4,11 +4,11 @@ services:
     env: node
     plan: free
     buildCommand: |
+      npm install -g @nestjs/cli
       npm install --legacy-peer-deps
       npm run build
-      echo "Build complete. Checking dist:"
-      ls -R dist || echo "No dist folder found!"
     startCommand: node dist/main.js
     envVars:
       - key: NODE_ENV
         value: production
+  
