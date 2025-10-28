@@ -3,12 +3,8 @@ services:
     name: sthree-backend
     env: node
     plan: free
-    buildCommand: |
-      npm install -g @nestjs/cli
-      npm install --legacy-peer-deps
-      npm run build
+    buildCommand: npm install --include=dev && npm run build
     startCommand: node dist/main.js
     envVars:
       - key: NODE_ENV
         value: production
-  
