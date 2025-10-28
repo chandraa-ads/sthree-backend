@@ -14,7 +14,6 @@ import { ApiTags, ApiOperation, ApiBody, ApiResponse } from '@nestjs/swagger';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
 import { Role } from '../common/enums/role.enum';
-import { FacebookLoginDto } from './dto/facebook-login.dto';
 import { LogoutUserDto } from './dto/logout-user.dto';
 import { Request } from 'express';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -69,12 +68,7 @@ export class AuthController {
     return this.authService.googleLoginOrRegisterAdmin(body.idToken);
   }
 
-  @Post('user/facebook')
-  @ApiOperation({ summary: 'Login/Register with Facebook OAuth' })
-  @UsePipes(new ValidationPipe({ whitelist: true }))
-  async loginWithFacebook(@Body() facebookLoginDto: FacebookLoginDto) {
-    return this.authService.facebookAuth(facebookLoginDto.accessToken);
-  }
+
 
 
 

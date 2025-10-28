@@ -1,4 +1,5 @@
 import { Max, Min } from 'class-validator';
+
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -20,9 +21,11 @@ export class User {
   @Column({ nullable: true })
   full_name?: string;
 
-  @Column()
+  @Index()
+  @Column({ unique: true })
   username: string;
 
+  @Index()
   @Column({ unique: true })
   email: string;
 
@@ -41,36 +44,29 @@ export class User {
   @Column({ nullable: true })
   whatsapp_no?: string;
 
-  // ✅ replaced single address with multiple addresses
+  // ✅ Replaced single address with multiple addresses (array type)
   @Column('text', { array: true, nullable: true })
   addresses?: string[];
 
-  // ✅ added date of birth
-  @Column({ type: 'date', nullable: true })
-  dob?: string;
-
-  // ✅ added gender field
+  // ✅ Profile image
   @Column({ nullable: true })
-  gender?: string;
+  profile_image?: string;
 
-  @Column({ nullable: true })
-  profile_photo?: string;
+  // ✅ Wishlist flag (if applicable)
+  @Column({ default: false })
+  wishlist?: boolean;
 
-  @OneToMany(() => Product, (product) => product.created_by_user)
-  productsCreated: Product[];
-
-  @OneToMany(() => ProductReview, (review) => review.user)
-  reviews: ProductReview[];
-
-  @CreateDateColumn()
+  // ✅ Optional fields for timestamps
+  @CreateDateColumn({ type: 'timestamp with time zone' })
   created_at: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamp with time zone' })
   updated_at: Date;
 
-  wishlist: any;
+  // ✅ One-to-many relation with product reviews
+  @OneToMany(() => ProductReview, (review) => review.user)
+  reviews: ProductReview[];
 }
-
 
 /** ================= CATEGORY ENTITY ================= */
 @Entity({ name: 'categories' })
@@ -166,7 +162,11 @@ export class Product {
   @Column({ type: 'timestamp', nullable: true })
   discount_end_date?: Date;
 
-  @Column({ type: 'timestamp', nullable: true, default: () => 'CURRENT_TIMESTAMP' })
+  @Column({
+    type: 'timestamp',
+    nullable: true,
+    default: () => 'CURRENT_TIMESTAMP',
+  })
   published_at?: Date;
 
   @Column({ type: 'timestamp', nullable: true })
@@ -198,13 +198,22 @@ export class Product {
   @JoinColumn({ name: 'category_id' })
   category_relation?: Category;
 
-  @OneToMany(() => ProductVariant, (variant) => variant.product, { cascade: true, eager: false })
+  @OneToMany(() => ProductVariant, (variant) => variant.product, {
+    cascade: true,
+    eager: false,
+  })
   variants?: ProductVariant[];
 
-  @OneToMany(() => ProductReview, (review) => review.product, { cascade: true, eager: false })
+  @OneToMany(() => ProductReview, (review) => review.product, {
+    cascade: true,
+    eager: false,
+  })
   reviews?: ProductReview[];
 
-  @OneToMany(() => ProductImage, (image) => image.product, { cascade: true, eager: false })
+  @OneToMany(() => ProductImage, (image) => image.product, {
+    cascade: true,
+    eager: false,
+  })
   product_images?: ProductImage[];
 
   @CreateDateColumn()
@@ -241,7 +250,9 @@ export class ProductVariant {
   @Column({ type: 'uuid' })
   product_id: string;
 
-  @ManyToOne(() => Product, (product) => product.variants, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Product, (product) => product.variants, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'product_id' })
   product: Product;
 
@@ -273,11 +284,15 @@ export class ProductImage {
   @Column({ type: 'uuid', nullable: true })
   product_id?: string;
 
-  @ManyToOne(() => ProductVariant, (variant) => variant.images, { onDelete: 'CASCADE' })
+  @ManyToOne(() => ProductVariant, (variant) => variant.images, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'variant_id' })
   variant: ProductVariant;
 
-  @ManyToOne(() => Product, (product) => product.product_images, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Product, (product) => product.product_images, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'product_id' })
   product: Product;
 }
@@ -285,7 +300,6 @@ export class ProductImage {
 /** ================= PRODUCT REVIEW ENTITY ================= */
 // product-review.entity.ts
 // import { User } from '../../users/entities/user.entity'; // path to your User entity
-
 
 @Entity('product_reviews')
 export class ProductReview {
@@ -304,7 +318,6 @@ export class ProductReview {
   @Column({ default: '' })
   comment: string;
 
-
   // ✅ Store both images and videos
   @Column('json', { nullable: true })
   media: {
@@ -316,14 +329,14 @@ export class ProductReview {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @ManyToOne(() => Product, (product) => product.reviews, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Product, (product) => product.reviews, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'product_id' })
   product: Product;
 
   @OneToMany(() => ProductReview, (review) => review.user)
   reviews: ProductReview[];
-
-
 
   @CreateDateColumn({ type: 'timestamp with time zone' })
   created_at: Date;
@@ -331,4 +344,3 @@ export class ProductReview {
   @UpdateDateColumn({ type: 'timestamp with time zone' })
   updated_at: Date;
 }
-
