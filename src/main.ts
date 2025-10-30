@@ -1,4 +1,4 @@
-import dns from 'dns'; // 👈 Force IPv4 before anything else
+import dns from 'dns';
 dns.setDefaultResultOrder('ipv4first');
 
 import { NestFactory } from '@nestjs/core';
@@ -6,39 +6,45 @@ import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { ConfigService } from '@nestjs/config';
-import { INestApplication } from '@nestjs/common';
+import pino from 'pino';
 
-async function bootstrap(): Promise<void> {
-  const app: INestApplication = await NestFactory.create(AppModule, {
+// ✅ Setup pretty logging for Render console
+console.log = (...args) => pino({ transport: { target: 'pino-pretty' } }).info(args.join(' '));
+
+async function bootstrap() {
+  console.log('🚀 Starting Nest app...');
+
+  const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
+    logger: ['error', 'warn', 'log'],
   });
 
   const configService = app.get(ConfigService);
 
-  // ✅ Get frontend URL and port safely
-  const frontendUrl = configService.get<string>('FRONTEND_URL') || '*';
-  const port =
-    process.env.PORT ||
-    configService.get<number>('PORT') ||
-    3000;
+  // 🔧 Log key DB + env details for Render debugging
+  console.log('🔧 DB Config:', {
+    host: configService.get('DB_HOST'),
+    port: configService.get('DB_PORT'),
+    user: configService.get('DB_USER'),
+    ssl: configService.get('DB_SSL'),
+  });
 
-  // ✅ Enable CORS
+  const frontendUrl = configService.get<string>('FRONTEND_URL') || '*';
+  const port = process.env.PORT || configService.get<number>('PORT') || 3000;
+
   app.enableCors({
     origin: frontendUrl,
     credentials: true,
   });
 
-  // ✅ Security middleware
   app.use(helmet());
-
-  // ✅ Disable COOP/COEP (avoid browser isolation issues)
   app.use((req, res, next) => {
     res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
     res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
     next();
   });
 
-  // ✅ Swagger setup
+  // 🚀 Swagger setup
   const swaggerConfig = new DocumentBuilder()
     .setTitle('E-Commerce API')
     .setDescription('User & Admin Panel API Documentation')
@@ -49,14 +55,8 @@ async function bootstrap(): Promise<void> {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api', app, document);
 
-  // ✅ Start the server
-  await app
-    .listen(port)
-    .then(() => {
-      console.log(`🚀 Server running at http://localhost:${port}`);
-      console.log('✅ IPv4 mode enabled for Render');
-    })
-    .catch((err) => console.error('❌ Failed to start server:', err));
+  await app.listen(port);
+  console.log(`✅ App ready at http://localhost:${port}`);
 }
 
 bootstrap();
