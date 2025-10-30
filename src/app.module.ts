@@ -32,15 +32,14 @@ import { Order } from './orders/entities/order.entity';
     // ✅ Make env variables globally accessible
     ConfigModule.forRoot({ isGlobal: true }),
 
-    // ✅ TypeORM config with async + SSL fix
+    // ✅ TypeORM config with async + SSL + IPv4 fix
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
-        host: config.get<string>('DB_HOST'),
+        host: config.get<string>('DB_HOST')?.replace('?ip=4', ''),
         port: parseInt(config.get<string>('DB_PORT') ?? '5432', 10),
-
         username: config.get<string>('DB_USER'),
         password: config.get<string>('DB_PASS'),
         database: config.get<string>('DB_NAME'),
@@ -57,15 +56,18 @@ import { Order } from './orders/entities/order.entity';
           CartItem,
         ],
 
-        // Never true in production
+        // ❌ Never true in production
         synchronize: false,
         autoLoadEntities: true,
 
         // ✅ Secure connection for Render + Supabase
-        ssl: config.get<string>('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
+        ssl: config.get<string>('DB_SSL') === 'true'
+          ? { rejectUnauthorized: false }
+          : false,
 
         extra: {
-          max: 20, // connection pool size
+          family: 4, // ✅ Forces IPv4 connection
+          max: 50, // ✅ Increased connection pool size
           connectionTimeoutMillis: 10000,
         },
       }),
