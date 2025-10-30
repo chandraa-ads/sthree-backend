@@ -45,34 +45,27 @@ async function resolveIPv4(host: string): Promise<string> {
     ConfigModule.forRoot({ isGlobal: true }),
 
     // ✅ TypeORM Config (Async + SSL + IPv4)
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: async (config: ConfigService) => {
-        const dbHost = config.get<string>('DB_HOST') ?? 'localhost';
-        const resolvedHost = await resolveIPv4(dbHost); // ✅ Force IPv4
-        const dbPort = parseInt(config.get<string>('DB_PORT') ?? '5432', 10);
+   TypeOrmModule.forRootAsync({
+  imports: [ConfigModule],
+  inject: [ConfigService],
+  useFactory: async (config: ConfigService) => ({
+    type: 'postgres',
+    host: config.get<string>('DB_HOST') ?? 'localhost',
+    port: parseInt(config.get<string>('DB_PORT') ?? '5432', 10),
+    username: config.get<string>('DB_USER'),
+    password: config.get<string>('DB_PASS'),
+    database: config.get<string>('DB_NAME'),
+    ssl: { rejectUnauthorized: false },
+    synchronize: false,
+    autoLoadEntities: true,
+    extra: {
+      max: 50,
+      connectionTimeoutMillis: 10000,
+      family: 4, // use IPv4
+    },
+  }),
+}),
 
-        return {
-          type: 'postgres',
-          host: resolvedHost,
-          port: dbPort,
-          username: config.get<string>('DB_USER'),
-          password: config.get<string>('DB_PASS'),
-          database: config.get<string>('DB_NAME'),
-          ssl: { rejectUnauthorized: false },
-          synchronize: false,
-          autoLoadEntities: true,
-
-          // ✅ Connection pooling and IPv4 enforcement
-          extra: {
-            max: 50,
-            connectionTimeoutMillis: 10000,
-            family: 4, // ensures IPv4 only
-          },
-        };
-      },
-    }),
 
     // ✅ Feature Modules
     AuthModule,
