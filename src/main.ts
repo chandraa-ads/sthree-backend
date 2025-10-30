@@ -71,6 +71,7 @@ async function bootstrap() {
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api', app, document);
+  console.log('🧠 Render DB_HOST:', configService.get('DB_HOST'));
 
   await app.listen(port);
   console.log(`✅ App is live and running at: http://localhost:${port}`);
