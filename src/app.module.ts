@@ -34,44 +34,34 @@ import { Order } from './orders/entities/order.entity';
 
     // ✅ TypeORM config with async + SSL + IPv4 fix
     TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.get<string>('DB_HOST')?.replace('?ip=4', ''),
-        port: parseInt(config.get<string>('DB_PORT') ?? '5432', 10),
-        username: config.get<string>('DB_USER'),
-        password: config.get<string>('DB_PASS'),
-        database: config.get<string>('DB_NAME'),
+  imports: [ConfigModule],
+  inject: [ConfigService],
+  useFactory: async (config: ConfigService) => {
+    const dbHost = config.get<string>('DB_HOST') ?? '';
+    const dbPort = parseInt(config.get<string>('DB_PORT') ?? '5432', 10);
 
-        // ✅ Load all entities
-        entities: [
-          User,
-          Product,
-          ProductVariant,
-          ProductImage,
-          ProductReview,
-          Category,
-          Order,
-          CartItem,
-        ],
+    return {
+      type: 'postgres',
+      host: dbHost.replace('?ip=4', ''), // force IPv4 hostname
+      port: dbPort,
+      username: config.get<string>('DB_USER'),
+      password: config.get<string>('DB_PASS'),
+      database: config.get<string>('DB_NAME'),
+      ssl: { rejectUnauthorized: false },
 
-        // ❌ Never true in production
-        synchronize: false,
-        autoLoadEntities: true,
+      entities: [__dirname + `/../**/*.entity.${process.env.NODE_ENV === 'production' ? 'js' : 'ts'}`],
+      synchronize: false,
+      autoLoadEntities: true,
 
-        // ✅ Secure connection for Render + Supabase
-        ssl: config.get<string>('DB_SSL') === 'true'
-          ? { rejectUnauthorized: false }
-          : false,
+      extra: {
+        max: 50, // Pool connections
+        connectionTimeoutMillis: 10000,
+        family: 4, // ✅ forces IPv4
+      },
+    };
+  },
+}),
 
-        extra: {
-          family: 4, // ✅ Forces IPv4 connection
-          max: 50, // ✅ Increased connection pool size
-          connectionTimeoutMillis: 10000,
-        },
-      }),
-    }),
 
     // ✅ Feature Modules
     AuthModule,
