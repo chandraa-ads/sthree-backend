@@ -1,3 +1,6 @@
+import dns from 'dns'; // 👈 Force IPv4 before anything else
+dns.setDefaultResultOrder('ipv4first');
+
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -14,9 +17,12 @@ async function bootstrap(): Promise<void> {
 
   // ✅ Get frontend URL and port safely
   const frontendUrl = configService.get<string>('FRONTEND_URL') || '*';
-  const port = process.env.PORT || configService.get<number>('PORT') || 3000;
+  const port =
+    process.env.PORT ||
+    configService.get<number>('PORT') ||
+    3000;
 
-  // ✅ CORS setup
+  // ✅ Enable CORS
   app.enableCors({
     origin: frontendUrl,
     credentials: true,
@@ -25,8 +31,8 @@ async function bootstrap(): Promise<void> {
   // ✅ Security middleware
   app.use(helmet());
 
-  // ✅ Disable COOP/COEP headers to avoid browser isolation issues
-  app.use((req: any, res: { setHeader: (arg0: string, arg1: string) => void; }, next: () => void) => {
+  // ✅ Disable COOP/COEP (avoid browser isolation issues)
+  app.use((req, res, next) => {
     res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
     res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
     next();
@@ -46,11 +52,10 @@ async function bootstrap(): Promise<void> {
   // ✅ Start the server
   await app
     .listen(port)
-    .then(() =>
-      console.log(
-        `🚀 Server running at http://localhost:${port} (Render/Local Ready)`
-      ),
-    )
+    .then(() => {
+      console.log(`🚀 Server running at http://localhost:${port}`);
+      console.log('✅ IPv4 mode enabled for Render');
+    })
     .catch((err) => console.error('❌ Failed to start server:', err));
 }
 
