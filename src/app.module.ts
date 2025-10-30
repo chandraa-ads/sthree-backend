@@ -10,62 +10,67 @@ import { AuthModule } from './auth/auth.module';
 import { CartModule } from './cart/cart.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import dns from 'dns/promises';
 
-// ✅ Force IPv4 for Node DNS resolver globally
+// ✅ Force Node to prefer IPv4 DNS lookups (avoids Render IPv6 crash)
 import * as nodeDns from 'dns';
 nodeDns.setDefaultResultOrder('ipv4first');
-
-// ✅ Explicit entities (optional but clean)
-import {
-  User,
-  Product,
-  ProductVariant,
-  ProductImage,
-  ProductReview,
-  Category,
-} from './products/entities/product.entity';
-import { CartItem } from './cart/entities/cart.entity';
-import { Order } from './orders/entities/order.entity';
-
-// ✅ Helper: Resolve IPv4 address from host
-async function resolveIPv4(host: string): Promise<string> {
-  try {
-    const addresses = await dns.resolve4(host);
-    if (addresses.length > 0) return addresses[0];
-  } catch (err) {
-    console.warn('IPv4 resolution failed, fallback to hostname:', err.message);
-  }
-  return host;
-}
 
 @Module({
   imports: [
     // ✅ Make .env variables globally accessible
     ConfigModule.forRoot({ isGlobal: true }),
 
-    // ✅ TypeORM Config (Async + SSL + IPv4)
-   TypeOrmModule.forRootAsync({
-  imports: [ConfigModule],
-  inject: [ConfigService],
-  useFactory: async (config: ConfigService) => ({
-    type: 'postgres',
-    host: config.get<string>('DB_HOST') ?? 'localhost',
-    port: parseInt(config.get<string>('DB_PORT') ?? '5432', 10),
-    username: config.get<string>('DB_USER'),
-    password: config.get<string>('DB_PASS'),
-    database: config.get<string>('DB_NAME'),
-    ssl: { rejectUnauthorized: false },
-    synchronize: false,
-    autoLoadEntities: true,
-    extra: {
-      max: 50,
-      connectionTimeoutMillis: 10000,
-      family: 4, // use IPv4
-    },
-  }),
-}),
+    // ✅ TypeORM config tuned for Render PostgreSQL
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (config: ConfigService) => {
+        const dbHost = config.get<string>('DB_HOST');
+        const dbPort = parseInt(config.get<string>('DB_PORT') ?? '5432', 10);
+        const dbUser = config.get<string>('DB_USER');
+        const dbPass = config.get<string>('DB_PASS');
+        const dbName = config.get<string>('DB_NAME');
+        const dbUrl = config.get<string>('DATABASE_URL');
 
+        console.log('🧠 DB Config:', {
+          host: dbHost,
+          port: dbPort,
+          user: dbUser,
+          name: dbName,
+          usingUrl: !!dbUrl,
+        });
+
+        return dbUrl
+          ? {
+              type: 'postgres',
+              url: dbUrl,
+              autoLoadEntities: true,
+              synchronize: false,
+              ssl: { rejectUnauthorized: false },
+              extra: {
+                connectionTimeoutMillis: 10000,
+                max: 50,
+                family: 4, // IPv4
+              },
+            }
+          : {
+              type: 'postgres',
+              host: dbHost ?? 'localhost',
+              port: dbPort,
+              username: dbUser,
+              password: dbPass,
+              database: dbName,
+              autoLoadEntities: true,
+              synchronize: false,
+              ssl: { rejectUnauthorized: false },
+              extra: {
+                connectionTimeoutMillis: 10000,
+                max: 50,
+                family: 4,
+              },
+            };
+      },
+    }),
 
     // ✅ Feature Modules
     AuthModule,
