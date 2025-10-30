@@ -24,7 +24,9 @@
     "migration:revert": "npm run typeorm -- migration:revert --dataSource ./data-source.ts"
   },
   "dependencies": {
+    "@types/express": "^5.0.3",
     "@nestjs/cli": "^11.0.10",
+    "@types/multer": "^2.0.0",
     "@nestjs/common": "^11.1.6",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.6",
@@ -60,9 +62,9 @@
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
     "@types/bcrypt": "^6.0.0",
-    "@types/express": "^5.0.3",
+    
     "@types/jest": "^30.0.0",
-    "@types/multer": "^2.0.0",
+    
     "@types/node": "^22.18.6",
     "@types/node-fetch": "^2.6.13",
     "@types/passport-jwt": "^4.0.1",
