@@ -1,4 +1,3 @@
-// main.ts
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -10,10 +9,12 @@ async function bootstrap(): Promise<void> {
   const app: INestApplication = await NestFactory.create(AppModule, {
     bufferLogs: true,
   });
+
   const configService = app.get(ConfigService);
 
+  // ✅ Get frontend URL and port safely
   const frontendUrl = configService.get<string>('FRONTEND_URL') || '*';
-  const port = configService.get<number>('PORT') || 3000;
+  const port = process.env.PORT || configService.get<number>('PORT') || 3000;
 
   // ✅ CORS setup
   app.enableCors({
@@ -24,8 +25,8 @@ async function bootstrap(): Promise<void> {
   // ✅ Security middleware
   app.use(helmet());
 
-  // ✅ Disable COOP/COEP headers for dev (avoids browser isolation issues)
-  app.use((req, res, next) => {
+  // ✅ Disable COOP/COEP headers to avoid browser isolation issues
+  app.use((req: any, res: { setHeader: (arg0: string, arg1: string) => void; }, next: () => void) => {
     res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
     res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
     next();
@@ -45,7 +46,11 @@ async function bootstrap(): Promise<void> {
   // ✅ Start the server
   await app
     .listen(port)
-    .then(() => console.log(`🚀 Server running at http://localhost:${port}`))
+    .then(() =>
+      console.log(
+        `🚀 Server running at http://localhost:${port} (Render/Local Ready)`
+      ),
+    )
     .catch((err) => console.error('❌ Failed to start server:', err));
 }
 
