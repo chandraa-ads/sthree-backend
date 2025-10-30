@@ -10,6 +10,10 @@ import { AuthModule } from './auth/auth.module';
 import { CartModule } from './cart/cart.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import dns from 'dns';
+
+// ✅ Force IPv4 DNS resolution (Render + Supabase fix)
+dns.setDefaultResultOrder('ipv4first');
 
 // ✅ Import all entities properly
 import {
@@ -38,7 +42,7 @@ import { Order } from './orders/entities/order.entity';
         password: config.get<string>('DB_PASS'),
         database: config.get<string>('DB_NAME'),
 
-        // ✅ Include all entities here
+        // ✅ Include all entities
         entities: [
           User,
           Product,
@@ -50,8 +54,14 @@ import { Order } from './orders/entities/order.entity';
           CartItem,
         ],
 
-        synchronize: false, // Keep false in production
+        synchronize: false, // never true in production
         autoLoadEntities: true,
+
+        // ✅ Enable SSL for Render/Supabase
+        ssl: {
+          rejectUnauthorized: false,
+        },
+
         extra: {
           max: 50, // connection pool limit
           host: config.get<string>('DB_HOST'),
