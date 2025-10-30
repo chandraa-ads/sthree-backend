@@ -12,10 +12,10 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import dns from 'dns';
 
-// ✅ Force IPv4 DNS resolution (Render + Supabase fix)
+// ✅ Force IPv4 first (important for Render/Supabase)
 dns.setDefaultResultOrder('ipv4first');
 
-// ✅ Import all entities properly
+// ✅ Import all entities explicitly
 import {
   User,
   Product,
@@ -29,20 +29,23 @@ import { Order } from './orders/entities/order.entity';
 
 @Module({
   imports: [
+    // ✅ Make env variables globally accessible
     ConfigModule.forRoot({ isGlobal: true }),
 
+    // ✅ TypeORM config with async + SSL fix
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
         host: config.get<string>('DB_HOST'),
-        port: config.get<number>('DB_PORT'),
+        port: parseInt(config.get<string>('DB_PORT') ?? '5432', 10),
+
         username: config.get<string>('DB_USER'),
         password: config.get<string>('DB_PASS'),
         database: config.get<string>('DB_NAME'),
 
-        // ✅ Include all entities
+        // ✅ Load all entities
         entities: [
           User,
           Product,
@@ -54,21 +57,21 @@ import { Order } from './orders/entities/order.entity';
           CartItem,
         ],
 
-        synchronize: false, // never true in production
+        // Never true in production
+        synchronize: false,
         autoLoadEntities: true,
 
-        // ✅ Enable SSL for Render/Supabase
-        ssl: {
-          rejectUnauthorized: false,
-        },
+        // ✅ Secure connection for Render + Supabase
+        ssl: config.get<string>('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
 
         extra: {
-          max: 50, // connection pool limit
-          host: config.get<string>('DB_HOST'),
+          max: 20, // connection pool size
+          connectionTimeoutMillis: 10000,
         },
       }),
     }),
 
+    // ✅ Feature Modules
     AuthModule,
     AdminModule,
     UsersModule,
