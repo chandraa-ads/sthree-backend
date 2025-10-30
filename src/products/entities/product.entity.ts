@@ -44,7 +44,7 @@ export class User {
   @Column({ nullable: true })
   whatsapp_no?: string;
 
-  // ✅ Replaced single address with multiple addresses (array type)
+  // ✅ Multiple addresses
   @Column('text', { array: true, nullable: true })
   addresses?: string[];
 
@@ -52,20 +52,23 @@ export class User {
   @Column({ nullable: true })
   profile_image?: string;
 
-  // ✅ Wishlist flag (if applicable)
+  // ✅ Wishlist flag
   @Column({ default: false })
   wishlist?: boolean;
 
-  // ✅ Optional fields for timestamps
+  // ✅ One-to-many relation with ProductReview
+  @OneToMany(() => ProductReview, (review) => review.user, {
+    cascade: true,
+    eager: false,
+  })
+  reviews: ProductReview[];
+
+  // ✅ Timestamps
   @CreateDateColumn({ type: 'timestamp with time zone' })
   created_at: Date;
 
   @UpdateDateColumn({ type: 'timestamp with time zone' })
   updated_at: Date;
-
-  // ✅ One-to-many relation with product reviews
-  @OneToMany(() => ProductReview, (review) => review.user)
-  reviews: ProductReview[];
 }
 
 /** ================= CATEGORY ENTITY ================= */
@@ -318,7 +321,7 @@ export class ProductReview {
   @Column({ default: '' })
   comment: string;
 
-  // ✅ Store both images and videos
+  // store images / videos / gifs
   @Column('json', { nullable: true })
   media: {
     type: 'image' | 'video' | 'gif';
@@ -334,9 +337,6 @@ export class ProductReview {
   })
   @JoinColumn({ name: 'product_id' })
   product: Product;
-
-  @OneToMany(() => ProductReview, (review) => review.user)
-  reviews: ProductReview[];
 
   @CreateDateColumn({ type: 'timestamp with time zone' })
   created_at: Date;

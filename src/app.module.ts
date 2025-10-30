@@ -11,9 +11,22 @@ import { CartModule } from './cart/cart.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
+// ✅ Import all entities properly
+import {
+  User,
+  Product,
+  ProductVariant,
+  ProductImage,
+  ProductReview,
+  Category,
+} from './products/entities/product.entity';
+import { CartItem } from './cart/entities/cart.entity';
+import { Order } from './orders/entities/order.entity';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -24,11 +37,28 @@ import { AppService } from './app.service';
         username: config.get<string>('DB_USER'),
         password: config.get<string>('DB_PASS'),
         database: config.get<string>('DB_NAME'),
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: false,
-        extra: { host: config.get<string>('DB_HOST') }, // IPv4 fix
+
+        // ✅ Include all entities here
+        entities: [
+          User,
+          Product,
+          ProductVariant,
+          ProductImage,
+          ProductReview,
+          Category,
+          Order,
+          CartItem,
+        ],
+
+        synchronize: false, // Keep false in production
+        autoLoadEntities: true,
+        extra: {
+          max: 50, // connection pool limit
+          host: config.get<string>('DB_HOST'),
+        },
       }),
     }),
+
     AuthModule,
     AdminModule,
     UsersModule,
@@ -36,6 +66,7 @@ import { AppService } from './app.service';
     CartModule,
     OrdersModule,
   ],
+
   controllers: [AppController],
   providers: [AppService],
 })
