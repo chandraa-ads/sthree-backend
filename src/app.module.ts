@@ -9,6 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import { CartModule } from './cart/cart.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import * as dns from 'dns';
 
 @Module({
   imports: [
@@ -21,14 +22,12 @@ import { AppService } from './app.service';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
-        const isSSL =
-          config.get<string>('DB_SSL') === 'true' ||
-          config.get<boolean>('DB_SSL') === true;
-
-        const rejectUnauthorized =
-          config.get<string>('DB_SSL_REJECT_UNAUTHORIZED') === 'true' ||
-          config.get<boolean>('DB_SSL_REJECT_UNAUTHORIZED') === true;
+      useFactory: async (config: ConfigService) => {
+        // 🚀 Force IPv4 DNS resolution if requested
+        if (config.get<string>('DB_FORCE_IPV4') === 'true') {
+          dns.setDefaultResultOrder('ipv4first');
+          console.log('🔧 Forcing IPv4 DNS resolution');
+        }
 
         return {
           type: 'postgres',
@@ -37,23 +36,24 @@ import { AppService } from './app.service';
           username: config.get<string>('DB_USER'),
           password: config.get<string>('DB_PASS'),
           database: config.get<string>('DB_NAME'),
-
-          // ✅ Entities auto-load from your app
           entities: [__dirname + '/**/*.entity{.ts,.js}'],
 
-          // ⚠️ Enable only in dev; turn off in real prod to prevent accidental schema changes
-          synchronize: config.get<string>('NODE_ENV') !== 'production',
+          synchronize:
+            config.get<string>('NODE_ENV') !== 'production' ? true : false,
 
-          // ✅ SSL settings for Render / Neon / Supabase PostgreSQL
-          ssl: isSSL
-            ? {
-                rejectUnauthorized,
-              }
-            : false,
+          ssl:
+            config.get<string>('DB_SSL') === 'true' ||
+            config.get<boolean>('DB_SSL') === true
+              ? {
+                  rejectUnauthorized:
+                    config.get<string>('DB_SSL_REJECT_UNAUTHORIZED') ===
+                      'true' ||
+                    config.get<boolean>('DB_SSL_REJECT_UNAUTHORIZED') === true,
+                }
+              : false,
 
-          // ✅ Ensure IPv4 (avoids IPv6 connection issues on Render)
           extra: {
-            family: 4,
+            family: 4, // ✅ Force IPv4 socket connection
           },
         };
       },
