@@ -13,28 +13,28 @@ async function bootstrap(): Promise<void> {
   const configService = app.get(ConfigService);
   const logger = new Logger('Bootstrap');
 
-  // ✅ Always use Render’s dynamic PORT if available
+  // ✅ Use Render's PORT dynamically or fallback to 3000
   const port = Number(process.env.PORT) || Number(configService.get('PORT')) || 3000;
-  const host = '0.0.0.0'; // Required for Render deployment
+  const host = '0.0.0.0'; // Required for Render
 
-  // ✅ Allow your frontend origin (for CORS)
+  // ✅ Configure CORS (allow your frontend)
   const frontendUrl = configService.get<string>('FRONTEND_URL') || '*';
   app.enableCors({
     origin: frontendUrl,
     credentials: true,
   });
 
-  // ✅ Basic Security Middleware
-  app.use(helmet());
+  // ✅ Basic security middleware
+  app.use(helmet.crossOriginResourcePolicy({ policy: 'cross-origin' }));
 
-  // ✅ Prevent COOP/COEP isolation issues (for embedded content)
+  // ✅ Prevent COOP/COEP isolation issues (especially for image / iframe embeds)
   app.use((req, res, next) => {
     res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
     res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
     next();
   });
 
-  // ✅ Swagger API Documentation
+  // ✅ Swagger configuration
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Sthree Trendz E-Commerce API')
     .setDescription('User, Admin, and Order Management API Documentation')
@@ -45,11 +45,15 @@ async function bootstrap(): Promise<void> {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api', app, document);
 
-  // ✅ Graceful startup with environment logs
+  // ✅ Start application with helpful logs
   try {
     await app.listen(port, host);
-    logger.log(`🚀 Server is live at http://localhost:${port}`);
-    logger.log(`Swagger UI available at http://localhost:${port}/api`);
+
+    const publicUrl =
+      process.env.RENDER_EXTERNAL_URL || `http://localhost:${port}`;
+
+    logger.log(`🚀 Server is live at ${publicUrl}`);
+    logger.log(`📘 Swagger UI available at ${publicUrl}/api`);
     logger.log('✅ Environment Summary:');
     logger.log(`   NODE_ENV: ${process.env.NODE_ENV}`);
     logger.log(`   DB_HOST: ${process.env.DB_HOST}`);
