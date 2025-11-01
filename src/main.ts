@@ -13,39 +13,38 @@ async function bootstrap(): Promise<void> {
   const configService = app.get(ConfigService);
   const logger = new Logger('Bootstrap');
 
-  // ✅ Render assigns a port dynamically
+  // ✅ Use Render’s dynamic port (Render automatically sets PORT)
   const port = parseInt(process.env.PORT || '10000', 10);
-  const host = '0.0.0.0'; // ✅ required for Render
+  const host = '0.0.0.0'; // Important for Render to bind properly
 
-  // ✅ Enable CORS (allow your frontend)
+  // ✅ Allow frontend requests (CORS)
   const frontendUrl = configService.get<string>('FRONTEND_URL') || '*';
   app.enableCors({
     origin: frontendUrl,
     credentials: true,
   });
 
-  // ✅ Helmet for security
+  // ✅ Security middleware
   app.use(helmet.crossOriginResourcePolicy({ policy: 'cross-origin' }));
 
   // ✅ Swagger
-  const config = new DocumentBuilder()
-    .setTitle('Sthree Trendz E-Commerce API')
-    .setDescription('API documentation for Sthree Trendz Backend')
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Sthree Trendz API')
+    .setDescription('Admin, Products, Orders, Users')
     .setVersion('1.0')
     .addBearerAuth()
     .build();
 
-  const document = SwaggerModule.createDocument(app, config);
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api', app, document);
 
-  // ✅ Start the server
   await app.listen(port, host);
 
   const publicUrl =
     process.env.RENDER_EXTERNAL_URL || `http://localhost:${port}`;
 
-  logger.log(`🚀 Server running at ${publicUrl}`);
-  logger.log(`📘 Swagger UI at ${publicUrl}/api`);
+  logger.log(`🚀 Server started at: ${publicUrl}`);
+  logger.log(`📘 Swagger docs at: ${publicUrl}/api`);
   logger.log(`✅ Listening on port: ${port}`);
 }
 
