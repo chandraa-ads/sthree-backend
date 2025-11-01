@@ -13,11 +13,11 @@ async function bootstrap(): Promise<void> {
   const configService = app.get(ConfigService);
   const logger = new Logger('Bootstrap');
 
-  // ✅ Render uses dynamic PORT (provided via env)
-  const port = parseInt(process.env.PORT || configService.get('PORT') || '3000', 10);
-  const host = '0.0.0.0'; // required for Render
+  // ✅ Render assigns a port dynamically
+  const port = parseInt(process.env.PORT || '10000', 10);
+  const host = '0.0.0.0'; // ✅ required for Render
 
-  // ✅ Enable CORS for your frontend
+  // ✅ Enable CORS (allow your frontend)
   const frontendUrl = configService.get<string>('FRONTEND_URL') || '*';
   app.enableCors({
     origin: frontendUrl,
@@ -27,36 +27,26 @@ async function bootstrap(): Promise<void> {
   // ✅ Helmet for security
   app.use(helmet.crossOriginResourcePolicy({ policy: 'cross-origin' }));
 
-  // ✅ Fix for COOP/COEP (Swagger and embeds)
-  app.use((req, res, next) => {
-    res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
-    res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
-    next();
-  });
-
-  // ✅ Swagger setup
-  const swaggerConfig = new DocumentBuilder()
+  // ✅ Swagger
+  const config = new DocumentBuilder()
     .setTitle('Sthree Trendz E-Commerce API')
-    .setDescription('User, Admin, and Order Management API Documentation')
+    .setDescription('API documentation for Sthree Trendz Backend')
     .setVersion('1.0')
     .addBearerAuth()
     .build();
 
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  try {
-    await app.listen(port, host);
+  // ✅ Start the server
+  await app.listen(port, host);
 
-    const publicUrl =
-      process.env.RENDER_EXTERNAL_URL || `http://localhost:${port}`;
+  const publicUrl =
+    process.env.RENDER_EXTERNAL_URL || `http://localhost:${port}`;
 
-    logger.log(`🚀 Server is live at ${publicUrl}`);
-    logger.log(`📘 Swagger UI available at ${publicUrl}/api`);
-  } catch (err) {
-    logger.error('❌ Failed to start server:', err.message);
-    process.exit(1);
-  }
+  logger.log(`🚀 Server running at ${publicUrl}`);
+  logger.log(`📘 Swagger UI at ${publicUrl}/api`);
+  logger.log(`✅ Listening on port: ${port}`);
 }
 
 bootstrap();
