@@ -13,9 +13,11 @@ import { AppService } from './app.service';
 @Module({
   imports: [
     // ✅ Load environment variables globally
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
 
-    // ✅ Database configuration
+    // ✅ PostgreSQL connection setup
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -26,20 +28,28 @@ import { AppService } from './app.service';
         username: config.get<string>('DB_USER'),
         password: config.get<string>('DB_PASS'),
         database: config.get<string>('DB_NAME'),
+
+        // ✅ Entities auto-load from your app
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true, // ⚠️ For dev only; disable (false) in real production
-        ssl: config.get<boolean>('DB_SSL') === true || config.get<string>('DB_SSL') === 'true'
-          ? {
-              rejectUnauthorized:
-                config.get<boolean>('DB_SSL_REJECT_UNAUTHORIZED') === true ||
-                config.get<string>('DB_SSL_REJECT_UNAUTHORIZED') === 'true'
-                  ? true
-                  : false,
-            }
-          : false,
+
+        // ⚠️ Enable only in dev; turn off in real prod to prevent accidental schema changes
+        synchronize:
+          config.get<string>('NODE_ENV') !== 'production' ? true : false,
+
+        // ✅ SSL settings for Render / Neon / Supabase PostgreSQL
+        ssl:
+          config.get<string>('DB_SSL') === 'true' ||
+          config.get<boolean>('DB_SSL') === true
+            ? {
+                rejectUnauthorized:
+                  config.get<string>('DB_SSL_REJECT_UNAUTHORIZED') === 'true' ||
+                  config.get<boolean>('DB_SSL_REJECT_UNAUTHORIZED') === true,
+              }
+            : false,
+
+        // ✅ Ensure IPv4 (avoids IPv6 connection issues on Render)
         extra: {
-          // ✅ Force IPv4 (for Supabase + Render connection issues)
-          host: config.get<string>('DB_HOST'),
+          family: 4,
         },
       }),
     }),
@@ -52,6 +62,7 @@ import { AppService } from './app.service';
     CartModule,
     OrdersModule,
   ],
+
   controllers: [AppController],
   providers: [AppService],
 })

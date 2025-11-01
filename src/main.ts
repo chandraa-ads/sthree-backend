@@ -1,10 +1,9 @@
-// src/main.ts
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { ConfigService } from '@nestjs/config';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, Logger } from '@nestjs/common';
 
 async function bootstrap(): Promise<void> {
   const app: INestApplication = await NestFactory.create(AppModule, {
@@ -12,31 +11,33 @@ async function bootstrap(): Promise<void> {
   });
 
   const configService = app.get(ConfigService);
+  const logger = new Logger('Bootstrap');
 
-  // ✅ Always prefer Render’s dynamic port
-  const port = process.env.PORT || configService.get<number>('PORT') || 3000;
+  // ✅ Always use Render’s dynamic PORT if available
+  const port = Number(process.env.PORT) || Number(configService.get('PORT')) || 3000;
+  const host = '0.0.0.0'; // Required for Render deployment
+
+  // ✅ Allow your frontend origin (for CORS)
   const frontendUrl = configService.get<string>('FRONTEND_URL') || '*';
-
-  // ✅ Enable CORS for frontend
   app.enableCors({
     origin: frontendUrl,
     credentials: true,
   });
 
-  // ✅ Add Helmet for security headers
+  // ✅ Basic Security Middleware
   app.use(helmet());
 
-  // ✅ Avoid COOP/COEP isolation issues
+  // ✅ Prevent COOP/COEP isolation issues (for embedded content)
   app.use((req, res, next) => {
     res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
     res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
     next();
   });
 
-  // ✅ Swagger documentation setup
+  // ✅ Swagger API Documentation
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('E-Commerce API')
-    .setDescription('User & Admin Panel API Documentation')
+    .setTitle('Sthree Trendz E-Commerce API')
+    .setDescription('User, Admin, and Order Management API Documentation')
     .setVersion('1.0')
     .addBearerAuth()
     .build();
@@ -44,17 +45,18 @@ async function bootstrap(): Promise<void> {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api', app, document);
 
-  // ✅ Start the server (important: 0.0.0.0 for Render)
+  // ✅ Graceful startup with environment logs
   try {
-    await app.listen(port, '0.0.0.0');
-    console.log(`🚀 Server running at http://0.0.0.0:${port}`);
-    console.log('Environment variables:', {
-      PORT: process.env.PORT,
-      NODE_ENV: process.env.NODE_ENV,
-      DB_HOST: process.env.DB_HOST,
-    });
+    await app.listen(port, host);
+    logger.log(`🚀 Server is live at http://localhost:${port}`);
+    logger.log(`Swagger UI available at http://localhost:${port}/api`);
+    logger.log('✅ Environment Summary:');
+    logger.log(`   NODE_ENV: ${process.env.NODE_ENV}`);
+    logger.log(`   DB_HOST: ${process.env.DB_HOST}`);
+    logger.log(`   PORT: ${process.env.PORT || port}`);
+    logger.log(`   FRONTEND_URL: ${frontendUrl}`);
   } catch (err) {
-    console.error('❌ Failed to start server:', err);
+    logger.error('❌ Failed to start server:', err.message);
     process.exit(1);
   }
 }
