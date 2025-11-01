@@ -13,7 +13,8 @@ async function bootstrap(): Promise<void> {
   const configService = app.get(ConfigService);
 
   const frontendUrl = configService.get<string>('FRONTEND_URL') || '*';
-  const port = configService.get<number>('PORT') || 3000;
+  const port = process.env.PORT || configService.get<number>('PORT') || 3000;
+
 
   // ✅ CORS setup
   app.enableCors({
@@ -47,6 +48,15 @@ async function bootstrap(): Promise<void> {
     .listen(port)
     .then(() => console.log(`🚀 Server running at http://localhost:${port}`))
     .catch((err) => console.error('❌ Failed to start server:', err));
+    console.log(`🚀 Server running on port ${port}`);
+
+
+    console.log('Environment variables:', {
+  PORT: process.env.PORT,
+  NODE_ENV: process.env.NODE_ENV,
+  DB_HOST: process.env.DB_HOST,
+});
+
 }
 
 bootstrap();
