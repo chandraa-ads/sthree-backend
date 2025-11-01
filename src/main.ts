@@ -13,28 +13,28 @@ async function bootstrap(): Promise<void> {
   const configService = app.get(ConfigService);
   const logger = new Logger('Bootstrap');
 
-  // ✅ Use Render's PORT dynamically or fallback to 3000
-  const port = Number(process.env.PORT) || Number(configService.get('PORT')) || 3000;
-  const host = '0.0.0.0'; // Required for Render
+  // ✅ Render uses dynamic PORT (provided via env)
+  const port = parseInt(process.env.PORT || configService.get('PORT') || '3000', 10);
+  const host = '0.0.0.0'; // required for Render
 
-  // ✅ Configure CORS (allow your frontend)
+  // ✅ Enable CORS for your frontend
   const frontendUrl = configService.get<string>('FRONTEND_URL') || '*';
   app.enableCors({
     origin: frontendUrl,
     credentials: true,
   });
 
-  // ✅ Basic security middleware
+  // ✅ Helmet for security
   app.use(helmet.crossOriginResourcePolicy({ policy: 'cross-origin' }));
 
-  // ✅ Prevent COOP/COEP isolation issues (especially for image / iframe embeds)
+  // ✅ Fix for COOP/COEP (Swagger and embeds)
   app.use((req, res, next) => {
     res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
     res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
     next();
   });
 
-  // ✅ Swagger configuration
+  // ✅ Swagger setup
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Sthree Trendz E-Commerce API')
     .setDescription('User, Admin, and Order Management API Documentation')
@@ -45,7 +45,6 @@ async function bootstrap(): Promise<void> {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api', app, document);
 
-  // ✅ Start application with helpful logs
   try {
     await app.listen(port, host);
 
@@ -54,11 +53,6 @@ async function bootstrap(): Promise<void> {
 
     logger.log(`🚀 Server is live at ${publicUrl}`);
     logger.log(`📘 Swagger UI available at ${publicUrl}/api`);
-    logger.log('✅ Environment Summary:');
-    logger.log(`   NODE_ENV: ${process.env.NODE_ENV}`);
-    logger.log(`   DB_HOST: ${process.env.DB_HOST}`);
-    logger.log(`   PORT: ${process.env.PORT || port}`);
-    logger.log(`   FRONTEND_URL: ${frontendUrl}`);
   } catch (err) {
     logger.error('❌ Failed to start server:', err.message);
     process.exit(1);

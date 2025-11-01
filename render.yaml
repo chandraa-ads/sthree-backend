@@ -2,9 +2,10 @@ services:
   - type: web
     name: sthree-backend
     env: node
-    plan: free
-    buildCommand: npm install --include=dev && npm run build
+    buildCommand: npm install && npm run build
     startCommand: node dist/main.js
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 10000
