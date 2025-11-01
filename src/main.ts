@@ -1,4 +1,3 @@
-// main.ts
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -12,11 +11,11 @@ async function bootstrap(): Promise<void> {
   });
   const configService = app.get(ConfigService);
 
-  const frontendUrl = configService.get<string>('FRONTEND_URL') || '*';
+  // ✅ Always prefer Render’s PORT if available
   const port = process.env.PORT || configService.get<number>('PORT') || 3000;
+  const frontendUrl = configService.get<string>('FRONTEND_URL') || '*';
 
-
-  // ✅ CORS setup
+  // ✅ Enable CORS
   app.enableCors({
     origin: frontendUrl,
     credentials: true,
@@ -25,7 +24,7 @@ async function bootstrap(): Promise<void> {
   // ✅ Security middleware
   app.use(helmet());
 
-  // ✅ Disable COOP/COEP headers for dev (avoids browser isolation issues)
+  // ✅ Avoid COOP/COEP issues (for browser embedding)
   app.use((req, res, next) => {
     res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
     res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
@@ -43,20 +42,19 @@ async function bootstrap(): Promise<void> {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api', app, document);
 
-  // ✅ Start the server
-  await app
-    .listen(port)
-    .then(() => console.log(`🚀 Server running at http://localhost:${port}`))
-    .catch((err) => console.error('❌ Failed to start server:', err));
-    console.log(`🚀 Server running on port ${port}`);
-
-
+  // ✅ Start server
+  try {
+    await app.listen(port);
+    console.log(`🚀 Server running at http://localhost:${port}`);
     console.log('Environment variables:', {
-  PORT: process.env.PORT,
-  NODE_ENV: process.env.NODE_ENV,
-  DB_HOST: process.env.DB_HOST,
-});
-
+      PORT: process.env.PORT,
+      NODE_ENV: process.env.NODE_ENV,
+      DB_HOST: process.env.DB_HOST,
+    });
+  } catch (err) {
+    console.error('❌ Failed to start server:', err);
+    process.exit(1);
+  }
 }
 
 bootstrap();
