@@ -44,7 +44,7 @@ export class User {
   @Column({ nullable: true })
   whatsapp_no?: string;
 
-  // ✅ Multiple addresses
+  // ✅ Replaced single address with multiple addresses (array type)
   @Column('text', { array: true, nullable: true })
   addresses?: string[];
 
@@ -52,23 +52,20 @@ export class User {
   @Column({ nullable: true })
   profile_image?: string;
 
-  // ✅ Wishlist flag
+  // ✅ Wishlist flag (if applicable)
   @Column({ default: false })
   wishlist?: boolean;
 
-  // ✅ One-to-many relation with ProductReview
-  @OneToMany(() => ProductReview, (review) => review.user, {
-    cascade: true,
-    eager: false,
-  })
-  reviews: ProductReview[];
-
-  // ✅ Timestamps
+  // ✅ Optional fields for timestamps
   @CreateDateColumn({ type: 'timestamp with time zone' })
   created_at: Date;
 
   @UpdateDateColumn({ type: 'timestamp with time zone' })
   updated_at: Date;
+
+  // ✅ One-to-many relation with product reviews
+  @OneToMany(() => ProductReview, (review) => review.user)
+  reviews: ProductReview[];
 }
 
 /** ================= CATEGORY ENTITY ================= */
@@ -321,7 +318,6 @@ export class ProductReview {
   @Column({ default: '' })
   comment: string;
 
-  // store images / videos / gifs
   @Column('json', { nullable: true })
   media: {
     type: 'image' | 'video' | 'gif';
@@ -344,3 +340,4 @@ export class ProductReview {
   @UpdateDateColumn({ type: 'timestamp with time zone' })
   updated_at: Date;
 }
+

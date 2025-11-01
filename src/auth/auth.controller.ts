@@ -13,8 +13,10 @@ import { LoginDto } from './dto/login.dto';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse } from '@nestjs/swagger';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
+import { Role } from '../common/enums/role.enum';
 import { LogoutUserDto } from './dto/logout-user.dto';
 import { Request } from 'express';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyResetCodeDto } from './dto/verify-reset-code.dto';
 export interface AuthenticatedRequest extends Request {

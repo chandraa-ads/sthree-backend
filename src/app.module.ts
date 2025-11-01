@@ -1,35 +1,42 @@
-import { Module, Logger } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+// app.module.ts
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { UsersModule } from './users/users.module';
+import { AdminModule } from './admin/admin.module';
+import { ProductsModule } from './products/products.module';
+import { OrdersModule } from './orders/orders.module';
+import { AuthModule } from './auth/auth.module';
+import { CartModule } from './cart/cart.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
-// ✅ Feature Modules
-import { SupabaseModule } from './supabase/supabase.module';
-import { AuthModule } from './auth/auth.module';
-import { UsersModule } from './users/users.module';
-import { ProductsModule } from './products/products.module';
-import { OrdersModule } from './orders/orders.module';
-import { CartModule } from './cart/cart.module';
-import { AdminModule } from './admin/admin.module';
-
 @Module({
   imports: [
-    // ✅ Load environment variables globally
     ConfigModule.forRoot({ isGlobal: true }),
-
-    // ✅ Supabase replaces TypeORM
-    SupabaseModule,
-
-    // ✅ App feature modules
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        type: 'postgres',
+        host: config.get<string>('DB_HOST'),
+        port: config.get<number>('DB_PORT'),
+        username: config.get<string>('DB_USER'),
+        password: config.get<string>('DB_PASS'),
+        database: config.get<string>('DB_NAME'),
+        entities: [__dirname + '/**/*.entity{.ts,.js}'],
+        synchronize: true,
+        extra: { host: config.get<string>('DB_HOST') }, // IPv4 fix
+      }),
+    }),
     AuthModule,
+    AdminModule,
     UsersModule,
     ProductsModule,
-    OrdersModule,
     CartModule,
-    AdminModule,
+    OrdersModule,
   ],
-
   controllers: [AppController],
-  providers: [AppService, Logger],
+  providers: [AppService],
 })
 export class AppModule {}

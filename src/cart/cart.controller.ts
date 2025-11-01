@@ -65,4 +65,6 @@ export class CartController {
   async clearCart(@Param('user_id') user_id: string) {
     return this.cartService.clearCart(user_id);
   }
+
+  
 }

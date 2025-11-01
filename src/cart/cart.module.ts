@@ -1,13 +1,17 @@
+// src/cart/cart.module.ts
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { CartService } from './cart.service';
-import { CartController } from './cart.controller';
+import { CartItem } from './entities/cart.entity';
 import { ProductsModule } from '../products/products.module';
-import { SupabaseModule } from '../supabase/supabase.module'; // ✅ Supabase for DB
+import { CartController } from './cart.controller';
+import { SupabaseModule } from '../supabase/supabase.module'; // ✅ Import SupabaseModule
 
 @Module({
   imports: [
+    TypeOrmModule.forFeature([CartItem]),
     ProductsModule,
-    SupabaseModule, // ✅ makes SupabaseService available app-wide
+    SupabaseModule, // ✅ make SupabaseService available
   ],
   providers: [CartService],
   controllers: [CartController],

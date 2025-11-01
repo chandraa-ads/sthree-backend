@@ -19,6 +19,7 @@ export class CartService {
     private readonly cartRepository: Repository<CartItem>,
     private readonly productsService: ProductsService,
     private readonly supabaseService: SupabaseService, // ✅ Inject SupabaseService
+    
   ) {}
 
   private isDiscountActive(product: any): boolean {

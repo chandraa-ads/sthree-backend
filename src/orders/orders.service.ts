@@ -10,85 +10,117 @@ import { NotificationService } from '../notifications/notification.service';
 import * as ExcelJS from 'exceljs';
 import { Response } from 'express';
 import { Res } from '@nestjs/common';
-
+import { OrderItem } from './entities/order.entity';
 @Injectable()
 export class OrdersService {
-  constructor(private readonly notificationService: NotificationService) {}
+  constructor(private readonly notificationService: NotificationService) { }
+
 
   // ✅ Create a new order
-async create(dto: CreateOrderDto) {
-  const { user_id, payment_method, shipping_address, items } = dto;
+  async create(dto: CreateOrderDto) {
+    const { user_id, payment_method, shipping_address, items } = dto;
 
-  if (!items || items.length === 0) {
-    throw new InternalServerErrorException('Order must have at least one item');
-  }
+    if (!items || items.length === 0) {
+      throw new InternalServerErrorException('Order must have at least one item');
+    }
 
-  console.log('📝 Creating order for user:', user_id);
+    console.log('📝 Creating order for user:', user_id);
 
-  const total_price = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const total = total_price;
+    const total_price = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+    const total = total_price;
 
-  // ✅ Insert order
-  const { data: order, error } = await supabase
-    .from('orders')
-    .insert([
-      {
-        user_id,
-        payment_method,
-        shipping_address,
-        items,
-        total,
-        total_price,
-        status: 'pending',
-        payment_status: 'pending',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-    ])
-    .select()
-    .single();
+    // ✅ Step 1: Insert main order
+    const { data: order, error } = await supabase
+      .from('orders')
+      .insert([
+        {
+          user_id,
+          payment_method,
+          shipping_address,
+          items,
+          total,
+          total_price,
+          status: 'pending',
+          payment_status: 'pending',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ])
+      .select()
+      .single();
 
-  if (error) {
-    console.error('❌ Order creation failed:', error.message);
-    throw new InternalServerErrorException(error.message);
-  }
+    if (error) {
+      console.error('❌ Order creation failed:', error.message);
+      throw new InternalServerErrorException(error.message);
+    }
 
-  console.log('✅ Order created:', order.id);
+    console.log('✅ Order created:', order.id);
 
-  // ✅ Insert order items
-  const orderItemsPayload = items.map((item) => ({
-    order_id: order.id,
-    product_id: item.product_id,
-    product_variant_id: item.product_variant_id ?? null,
-    product_name: item.product_name,
-    price: item.price,
-    quantity: item.quantity,
-    selected_size: item.selected_size ?? null,
-    selected_color: item.selected_color ?? null,
-    subtotal: item.price * item.quantity,
-  }));
+    // ✅ Step 2: Enrich each item with image_url from DB
+    const orderItemsPayload: any[] = [];
 
-  const { error: itemsError } = await supabase
-    .from('order_items')
-    .insert(orderItemsPayload);
 
-  if (itemsError) {
-    console.error('❌ Order items insert failed:', itemsError.message);
-    await supabase.from('orders').delete().eq('id', order.id);
-    throw new InternalServerErrorException(itemsError.message);
-  }
+    for (const item of items) {
+      // ✅ 1️⃣ Start with whatever the user sent
+      let imageUrl = item.image_url ?? null;
 
-  console.log('✅ Order items inserted');
+      // ✅ 2️⃣ If missing, try variant image
+      if (!imageUrl && item.product_variant_id) {
+        const { data: variant } = await supabase
+          .from('product_variants')
+          .select('image_url')
+          .eq('id', item.product_variant_id)
+          .single();
+        if (variant?.image_url) imageUrl = variant.image_url;
+      }
 
-  // ✅ Fetch full order with order_items
-  const { data: fullOrder, error: fullOrderError } = await supabase
-    .from('orders')
-    .select(`
+      // ✅ 3️⃣ If still missing, fallback to product main image
+      if (!imageUrl) {
+        const { data: product } = await supabase
+          .from('products')
+          .select('main_image')
+          .eq('id', item.product_id)
+          .single();
+        if (product?.main_image) imageUrl = product.main_image;
+      }
+
+      // ✅ 4️⃣ Push to payload
+      orderItemsPayload.push({
+        order_id: order.id,
+        product_id: item.product_id,
+        product_variant_id: item.product_variant_id ?? null,
+        product_name: item.product_name,
+        price: item.price,
+        quantity: item.quantity,
+        selected_size: item.selected_size ?? null,
+        selected_color: item.selected_color ?? null,
+        subtotal: item.price * item.quantity,
+        image_url: imageUrl, // ✅ Now correctly set
+      });
+    }
+
+
+    // ✅ Step 3: Insert order items
+    const { error: itemsError } = await supabase.from('order_items').insert(orderItemsPayload);
+
+    if (itemsError) {
+      console.error('❌ Order items insert failed:', itemsError.message);
+      await supabase.from('orders').delete().eq('id', order.id);
+      throw new InternalServerErrorException(itemsError.message);
+    }
+
+    console.log('✅ Order items inserted with images');
+
+    // ✅ Step 4: Fetch full order details
+    const { data: fullOrder, error: fullOrderError } = await supabase
+      .from('orders')
+      .select(`
       *,
       order_items(
         product_id,
         product_variant_id,
         product_name,
+        image_url,
         price,
         quantity,
         selected_size,
@@ -96,46 +128,49 @@ async create(dto: CreateOrderDto) {
         subtotal
       )
     `)
-    .eq('id', order.id)
-    .single();
-
-  if (fullOrderError) {
-    console.error('❌ Failed to fetch full order:', fullOrderError.message);
-    throw new InternalServerErrorException(fullOrderError.message);
-  }
-
-  // 🔔 Fetch customer info
-  let userData;
-  try {
-    console.log('📧 Fetching customer info');
-    const { data, error: userError } = await supabase
-      .from('users')
-      .select('id, full_name, username, email, phone, whatsapp_no, address, profile_photo')
-      .eq('id', user_id)
+      .eq('id', order.id)
       .single();
 
-    if (userError || !data?.email) {
-      console.error('❌ Failed to fetch customer email:', userError?.message || 'Email missing');
-    } else {
-      userData = data;
-
-      console.log('📧 Sending notifications to admin & customer');
-      await this.notificationService.sendOrderNotifications(
-        fullOrder,
-        userData,
-        userData.email,
-        userData.full_name
-      );
+    if (fullOrderError) {
+      console.error('❌ Failed to fetch full order:', fullOrderError.message);
+      throw new InternalServerErrorException(fullOrderError.message);
     }
-  } catch (err: any) {
-    console.error('❌ Notification process failed:', err.message || err);
+
+    // ✅ Step 5: Send notification emails
+    let userData;
+    try {
+      console.log('📧 Fetching customer info');
+      const { data, error: userError } = await supabase
+        .from('users')
+        .select('id, full_name, username, email, phone, whatsapp_no, addresses, profile_image')
+        .eq('id', user_id)
+        .single();
+
+      if (userError || !data?.email) {
+        console.error('❌ Failed to fetch customer email:', userError?.message || 'Email missing');
+      } else {
+        userData = data;
+        console.log('📧 Sending notifications to admin & customer');
+        await this.notificationService.sendOrderNotifications(
+          fullOrder,
+          userData,
+          userData.email,
+          userData.full_name,
+          process.env.EMAIL_USER
+        );
+        console.log('✅ Notifications sent successfully');
+      }
+    } catch (err: any) {
+      console.error('❌ Notification process failed:', err.message || err);
+    }
+
+    return {
+      message: 'Order placed successfully',
+      order: fullOrder,
+    };
   }
 
-  return {
-    message: 'Order placed successfully',
-    order: fullOrder
-  };
-}
+
 
 
   async findAllWithFilters(filters?: {
@@ -150,15 +185,17 @@ async create(dto: CreateOrderDto) {
       *,
       users(full_name, email, phone),
       order_items(
-        product_id,
-        product_variant_id,
-        product_name,
-        price,
-        quantity,
-        selected_size,
-        selected_color,
-        subtotal
-      )
+  product_id,
+  product_variant_id,
+  product_name,
+  image_url,
+  price,
+  quantity,
+  selected_size,
+  selected_color,
+  subtotal
+)
+
     `,
     );
 
@@ -191,16 +228,18 @@ async create(dto: CreateOrderDto) {
       .select(
         `
         *,
-        order_items(
-          product_id,
-          product_variant_id,
-          product_name,
-          price,
-          quantity,
-          selected_size,
-          selected_color,
-          subtotal
-        )
+       order_items(
+  product_id,
+  product_variant_id,
+  product_name,
+  image_url,
+  price,
+  quantity,
+  selected_size,
+  selected_color,
+  subtotal
+)
+
       `,
       )
       .order('created_at', { ascending: false });
@@ -222,15 +261,17 @@ async create(dto: CreateOrderDto) {
       *,
       users(full_name, email, phone),
       order_items(
-        product_id,
-        product_variant_id,
-        product_name,
-        price,
-        quantity,
-        selected_size,
-        selected_color,
-        subtotal
-      )
+  product_id,
+  product_variant_id,
+  product_name,
+  image_url,
+  price,
+  quantity,
+  selected_size,
+  selected_color,
+  subtotal
+)
+
     `,
       { count: 'exact' },
     );
@@ -273,16 +314,18 @@ async create(dto: CreateOrderDto) {
         `
         *,
         users(full_name, email, phone),
-        order_items(
-          product_id,
-          product_variant_id,
-          product_name,
-          price,
-          quantity,
-          selected_size,
-          selected_color,
-          subtotal
-        )
+       order_items(
+  product_id,
+  product_variant_id,
+  product_name,
+  image_url,
+  price,
+  quantity,
+  selected_size,
+  selected_color,
+  subtotal
+)
+
       `,
       )
       .eq('id', id)
@@ -301,16 +344,18 @@ async create(dto: CreateOrderDto) {
       .select(
         `
         *,
-        order_items(
-          product_id,
-          product_variant_id,
-          product_name,
-          price,
-          quantity,
-          selected_size,
-          selected_color,
-          subtotal
-        )
+      order_items(
+  product_id,
+  product_variant_id,
+  product_name,
+  image_url,
+  price,
+  quantity,
+  selected_size,
+  selected_color,
+  subtotal
+)
+
       `,
       )
       .eq('user_id', user_id)
@@ -327,11 +372,12 @@ async create(dto: CreateOrderDto) {
     orderId: string,
     paymentDetails: { transaction_id: string; method: string },
   ) {
-    const { data, error } = await supabase
+    // ✅ Step 1: Update order status
+    const { data: order, error } = await supabase
       .from('orders')
       .update({
         payment_status: 'success',
-        status: 'confirmed',
+        status: 'success', // ✅ mark as delivered or confirmed
         payment_info: {
           ...paymentDetails,
           paid_at: new Date().toISOString(),
@@ -346,7 +392,64 @@ async create(dto: CreateOrderDto) {
       console.error('❌ updatePaymentStatus error:', error.message);
       throw new InternalServerErrorException(error.message);
     }
-    return { message: 'Payment confirmed', order: data };
+
+    console.log('✅ Payment status updated:', order.id);
+
+    // ✅ Step 2: Fetch full order (with items)
+    const { data: fullOrder, error: fetchError } = await supabase
+      .from('orders')
+      .select(`
+      *,
+      order_items(
+  product_id,
+  product_variant_id,
+  product_name,
+  image_url,
+  price,
+  quantity,
+  selected_size,
+  selected_color,
+  subtotal
+)
+
+    `)
+      .eq('id', orderId)
+      .single();
+
+    if (fetchError) {
+      console.error('❌ Fetch full order failed:', fetchError.message);
+      throw new InternalServerErrorException(fetchError.message);
+    }
+
+    // ✅ Step 3: Fetch user info
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id, full_name, username, email, phone, whatsapp_no, addresses, profile_image')
+      .eq('id', fullOrder.user_id)
+      .single();
+
+    if (userError || !userData?.email) {
+      console.error('❌ Failed to fetch user info:', userError?.message || 'Missing email');
+    } else {
+      // ✅ Step 4: Send email to admin and customer
+      try {
+        await this.notificationService.sendOrderNotifications(
+          fullOrder,             // updated order info
+          userData,              // customer info
+          userData.email,        // customer email
+          userData.full_name,    // customer name
+          process.env.EMAIL_USER // admin email
+        );
+        console.log('📧 Order success emails sent to user & admin');
+      } catch (err) {
+        console.error('❌ Email send failed:', err.message || err);
+      }
+    }
+
+    return {
+      message: 'Payment confirmed and emails sent',
+      order: fullOrder,
+    };
   }
 
   async exportOrdersToExcel(res: Response) {
@@ -354,15 +457,18 @@ async create(dto: CreateOrderDto) {
       .from('orders')
       .select(`
         *,
-        order_items(
-          product_id,
-          product_name,
-          price,
-          quantity,
-          selected_size,
-          selected_color,
-          subtotal
-        )
+       order_items(
+  product_id,
+  product_variant_id,
+  product_name,
+  image_url,
+  price,
+  quantity,
+  selected_size,
+  selected_color,
+  subtotal
+)
+
       `);
 
     if (error) {
@@ -437,4 +543,84 @@ async create(dto: CreateOrderDto) {
     await workbook.xlsx.write(res);
     res.end();
   }
+
+  // ✅ Admin manually confirms the order (before delivery)
+  async confirmOrder(orderId: string) {
+    // ✅ Step 1: Update both order status and payment status
+    const { data, error } = await supabase
+      .from('orders')
+      .update({
+        status: 'confirmed',
+        payment_status: 'success', // ✅ COD marked as paid when confirmed
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', orderId)
+      .select();
+
+    if (error) {
+      console.error('❌ confirmOrder error:', error.message);
+      throw new InternalServerErrorException(error.message);
+    }
+
+    const order = Array.isArray(data) ? data[0] : data;
+    if (!order) throw new InternalServerErrorException('Order not found after update');
+
+    console.log(`✅ Order confirmed by admin: ${order.id}`);
+
+    // ✅ Step 2: Fetch full order with items
+    const { data: fullOrder, error: fetchError } = await supabase
+      .from('orders')
+      .select(`
+      *,
+      order_items(
+        product_id,
+        product_variant_id,
+        product_name,
+        image_url,
+        price,
+        quantity,
+        selected_size,
+        selected_color,
+        subtotal
+      )
+    `)
+      .eq('id', orderId)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error('❌ Fetch full order failed:', fetchError.message);
+    }
+
+    // ✅ Step 3: Fetch user info
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id, full_name, username, email, phone, whatsapp_no, addresses')
+      .eq('id', order.user_id)
+      .maybeSingle();
+
+    if (userError) {
+      console.error('❌ Fetch user failed:', userError.message);
+    }
+
+    // ✅ Step 4: Send order confirmation email
+    if (userData?.email) {
+      try {
+        await this.notificationService.sendOrderNotifications(
+          fullOrder || order,
+          userData,
+          userData.email,
+          userData.full_name,
+          process.env.EMAIL_USER,
+        );
+        console.log('📧 Order confirmation mail sent to user');
+      } catch (err) {
+        console.error('❌ Email send failed:', err.message || err);
+      }
+    }
+
+    return { message: 'Order confirmed successfully', order: fullOrder || order };
+  }
+
+
+
 }

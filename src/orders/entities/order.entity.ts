@@ -1,4 +1,10 @@
-import { Column, Entity, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 // ✅ Single order item structure with variant info
 export interface OrderItem {
@@ -9,7 +15,8 @@ export interface OrderItem {
   quantity: number;
   selected_size?: string | null;
   selected_color?: string | null;
-  subtotal?: number; // price * quantity (can be computed before insert)
+  subtotal?: number;                    // price * quantity (can be computed before insert)
+  image_url?: string | null;            // ✅ Added field for product image
 }
 
 // ✅ Shipping address structure
@@ -26,7 +33,7 @@ export interface PaymentInfo {
   paid_at?: string;
 }
 
-// Your updated Order entity (as you shared)
+// ✅ Order entity
 @Entity({ name: 'orders' })
 export class Order {
   @PrimaryGeneratedColumn('uuid')
@@ -36,7 +43,7 @@ export class Order {
   user_id!: string;
 
   @Column({ type: 'jsonb' })
-  items!: OrderItem[];
+  items!: OrderItem[]; // includes image_url in each item
 
   @Column({ type: 'varchar', nullable: true })
   payment_method?: string;
@@ -62,9 +69,20 @@ export class Order {
   @Column({ type: 'jsonb', nullable: true })
   tracking_info?: any;
 
-  @CreateDateColumn({ type: 'timestamp', name: 'created_at', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({ type: 'text', nullable: true })
+  image_url ?: any;
+
+  @CreateDateColumn({
+    type: 'timestamp',
+    name: 'created_at',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'timestamp', name: 'updated_at', default: () => 'CURRENT_TIMESTAMP' })
+  @UpdateDateColumn({
+    type: 'timestamp',
+    name: 'updated_at',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
   updated_at!: Date;
 }
