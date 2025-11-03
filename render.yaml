@@ -3,30 +3,47 @@ services:
     name: sthree-backend
     env: node
 
-    # ✅ Ensure correct Node.js version for Supabase/TypeORM/NestJS
     runtime:
       nodeVersion: 20
 
-    # ✅ Build & start commands
     buildCommand: npm ci && npm run build
     startCommand: node dist/main.js
 
-    # ✅ Auto-detect Render port and bind to 0.0.0.0 (handled in main.ts)
     autoDeploy: true
 
     envVars:
       - key: NODE_ENV
         value: production
+
+      # ✅ Render uses this automatically — defined for clarity
       - key: PORT
         value: 10000
+
+      # ✅ Your frontend app URL (update this)
       - key: FRONTEND_URL
-        value: https://your-frontend-domain.com
+        value: https://sthree-frontend.onrender.com
+
+      # ✅ Supabase database connection (from Supabase Project Settings → Database)
       - key: DATABASE_URL
-        sync: false   # set in Render dashboard (from Supabase)
+        sync: false
+
+      # ✅ Optional: Direct database connection (faster migrations)
       - key: DIRECT_URL
-        sync: false   # set in Render dashboard (from Supabase)
+        sync: false
+
+      # ✅ Supabase REST API URL (from Supabase Settings → API)
+      - key: SUPABASE_URL
+        sync: false
+
+      # ✅ Supabase Service Role Key (⚠️ keep secret — from Supabase Settings → API)
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+
+      # ✅ JWT Secret for NestJS Auth
       - key: JWT_SECRET
-        sync: false   # secure app secret
+        sync: false
+
+      # ✅ Email SMTP credentials
       - key: EMAIL_USER
         sync: false
       - key: EMAIL_PASS
