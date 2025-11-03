@@ -20,23 +20,29 @@ import * as dns from 'dns';
 
     // ✅ PostgreSQL connection setup
     TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: async (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.get<string>('DB_HOST'),
-        port: Number(config.get<string>('DB_PORT')) || 5432,
-        username: config.get<string>('DB_USER'),
-        password: config.get<string>('DB_PASS'),
-        database: config.get<string>('DB_NAME'),
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: config.get<string>('NODE_ENV') !== 'production',
-        ssl:
-          config.get<string>('DB_SSL') === 'true'
-            ? { rejectUnauthorized: false }
-            : false,
-      }),
-    }),
+  imports: [ConfigModule],
+  inject: [ConfigService],
+  useFactory: async (config: ConfigService) => {
+    return {
+      type: 'postgres',
+      host: config.get<string>('DB_HOST'),
+      port: Number(config.get<string>('DB_PORT')) || 5432,
+      username: config.get<string>('DB_USER'),
+      password: config.get<string>('DB_PASS'),
+      database: config.get<string>('DB_NAME'),
+      entities: [__dirname + '/**/*.entity{.ts,.js}'],
+      synchronize: config.get<string>('NODE_ENV') !== 'production',
+
+      ssl: { rejectUnauthorized: false },
+
+      extra: {
+        // 👇 This forces IPv4 connections only (important for Render + Supabase)
+        family: 4,
+      },
+    };
+  },
+}),
+
 
     // ✅ Feature modules
     AuthModule,
