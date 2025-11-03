@@ -1,67 +1,67 @@
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { UsersModule } from './users/users.module';
-import { AdminModule } from './admin/admin.module';
-import { ProductsModule } from './products/products.module';
-import { OrdersModule } from './orders/orders.module';
-import { AuthModule } from './auth/auth.module';
-import { CartModule } from './cart/cart.module';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import * as dns from 'dns';
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import helmet from 'helmet';
+import { ConfigService } from '@nestjs/config';
+import { INestApplication, Logger } from '@nestjs/common';
 
-@Module({
-  imports: [
-    // ✅ Load environment variables globally
-    ConfigModule.forRoot({
-      isGlobal: true,
-    }),
+async function bootstrap(): Promise<void> {
+  const logger = new Logger('Bootstrap');
 
-    // ✅ PostgreSQL connection setup
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: async (config: ConfigService) => {
-        // 🚀 Optional: Force IPv4 DNS resolution if requested
-        if (config.get<string>('DB_FORCE_IPV4') === 'true') {
-          dns.setDefaultResultOrder('ipv4first');
-          console.log('🔧 Forcing IPv4 DNS resolution');
-        }
+  try {
+    logger.log('🚀 Bootstrapping application...');
 
-        const useSSL =
-          config.get<string>('DB_SSL') === 'true' ||
-          config.get<boolean>('DB_SSL') === true;
+    const app: INestApplication = await NestFactory.create(AppModule, {
+      bufferLogs: true,
+    });
 
-        return {
-          type: 'postgres',
-          host: config.get<string>('DB_HOST'),
-          port: Number(config.get<string>('DB_PORT')) || 5432,
-          username: config.get<string>('DB_USER'),
-          password: config.get<string>('DB_PASS'),
-          database: config.get<string>('DB_NAME'),
-          entities: [__dirname + '/**/*.entity{.ts,.js}'],
-          synchronize: config.get<string>('NODE_ENV') !== 'production',
+    const configService = app.get(ConfigService);
 
-          // ✅ Use SSL if DB_SSL=true
-          ssl: useSSL ? { rejectUnauthorized: false } : false,
+    // ✅ Use dynamic Render port or fallback for local
+    const port = parseInt(process.env.PORT || '10000', 10);
+    const host = '0.0.0.0'; // Important for Render and Docker
 
-          // ✅ Prefer IPv4 connection if DNS returns both IPv6 & IPv4
-          extra: { family: 4 },
-        };
-      },
-    }),
+    // ✅ Allow frontend requests (CORS)
+    const frontendUrl = configService.get<string>('FRONTEND_URL') || '*';
+    app.enableCors({
+      origin: frontendUrl,
+      credentials: true,
+    });
 
-    // ✅ Feature modules
-    AuthModule,
-    AdminModule,
-    UsersModule,
-    ProductsModule,
-    CartModule,
-    OrdersModule,
-  ],
+    // ✅ Basic security (allow images and assets)
+    app.use(helmet());
+    app.use(
+      helmet.crossOriginResourcePolicy({
+        policy: 'cross-origin',
+      }),
+    );
 
-  controllers: [AppController],
-  providers: [AppService],
-})
-export class AppModule {}
+    // ✅ Swagger setup
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('Sthree Trendz API')
+      .setDescription('Admin, Products, Orders, Users')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api', app, document);
+
+    // ✅ Start server and confirm binding
+    await app.listen(port, host);
+
+    const publicUrl =
+      process.env.RENDER_EXTERNAL_URL || `http://localhost:${port}`;
+
+    logger.log(`✅ App listening on host: ${host}`);
+    logger.log(`✅ App running on port: ${port}`);
+    logger.log(`🚀 Server started at: ${publicUrl}`);
+    logger.log(`📘 Swagger docs available at: ${publicUrl}/api`);
+  } catch (err) {
+    console.error('❌ Application failed to start:');
+    console.error(err);
+    process.exit(1);
+  }
+}
+
+bootstrap();
