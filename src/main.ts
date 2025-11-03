@@ -1,5 +1,5 @@
 import dns from 'dns';
-dns.setDefaultResultOrder('ipv4first'); // ✅ Force IPv4 resolution (fixes Supabase DNS on Render)
+dns.setDefaultResultOrder('ipv4first'); // ✅ Fix Supabase DNS on Render
 
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
@@ -13,16 +13,15 @@ async function bootstrap(): Promise<void> {
   logger.log('🚀 Bootstrapping application...');
 
   const app: INestApplication = await NestFactory.create(AppModule);
-
   const configService = app.get(ConfigService);
 
-  // ✅ Get port from Render or default to 3000
-  const port = process.env.PORT
-    ? parseInt(process.env.PORT, 10)
-    : configService.get<number>('PORT') || 3000;
+  // ✅ Get port (Render provides PORT)
+  const port =
+    process.env.PORT ||
+    configService.get<number>('PORT') ||
+    3000;
 
-  // ✅ Always bind to 0.0.0.0 (Render requirement)
-  const host = '0.0.0.0';
+  const host = '0.0.0.0'; // ✅ Render requirement
 
   // ✅ CORS setup
   const frontendUrl = configService.get<string>('FRONTEND_URL') || '*';
@@ -45,13 +44,14 @@ async function bootstrap(): Promise<void> {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api', app, document);
 
-  // ✅ Start the server
+  // ✅ Start server
+  logger.log(`Starting server on http://${host}:${port} ...`);
   await app.listen(port, host);
 
   const publicUrl =
     process.env.RENDER_EXTERNAL_URL || `http://${host}:${port}`;
   logger.log(`✅ Server listening on ${host}:${port}`);
-  logger.log(`📘 Swagger docs: ${publicUrl}/api`);
+  logger.log(`📘 Swagger docs available at: ${publicUrl}/api`);
 }
 
 bootstrap().catch((err) => {
