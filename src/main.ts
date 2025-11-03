@@ -23,11 +23,15 @@ import * as dns from 'dns';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: async (config: ConfigService) => {
-        // 🚀 Force IPv4 DNS resolution if requested
+        // 🚀 Optional: Force IPv4 DNS resolution if requested
         if (config.get<string>('DB_FORCE_IPV4') === 'true') {
           dns.setDefaultResultOrder('ipv4first');
           console.log('🔧 Forcing IPv4 DNS resolution');
         }
+
+        const useSSL =
+          config.get<string>('DB_SSL') === 'true' ||
+          config.get<boolean>('DB_SSL') === true;
 
         return {
           type: 'postgres',
@@ -37,20 +41,13 @@ import * as dns from 'dns';
           password: config.get<string>('DB_PASS'),
           database: config.get<string>('DB_NAME'),
           entities: [__dirname + '/**/*.entity{.ts,.js}'],
+          synchronize: config.get<string>('NODE_ENV') !== 'production',
 
-          synchronize:
-            config.get<string>('NODE_ENV') !== 'production' ? true : false,
+          // ✅ Use SSL if DB_SSL=true
+          ssl: useSSL ? { rejectUnauthorized: false } : false,
 
-          // ✅ Simple SSL setup (no rejectUnauthorized flag)
-          ssl:
-            config.get<string>('DB_SSL') === 'true' ||
-            config.get<boolean>('DB_SSL') === true
-              ? { rejectUnauthorized: false }
-              : false,
-
-          extra: {
-            family: 4, // ✅ Force IPv4 socket connection
-          },
+          // ✅ Prefer IPv4 connection if DNS returns both IPv6 & IPv4
+          extra: { family: 4 },
         };
       },
     }),
