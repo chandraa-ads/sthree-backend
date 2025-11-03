@@ -22,41 +22,20 @@ import * as dns from 'dns';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: async (config: ConfigService) => {
-        // 🚀 Force IPv4 DNS resolution if requested
-        if (config.get<string>('DB_FORCE_IPV4') === 'true') {
-          dns.setDefaultResultOrder('ipv4first');
-          console.log('🔧 Forcing IPv4 DNS resolution');
-        }
-
-        return {
-          type: 'postgres',
-          host: config.get<string>('DB_HOST'),
-          port: Number(config.get<string>('DB_PORT')) || 5432,
-          username: config.get<string>('DB_USER'),
-          password: config.get<string>('DB_PASS'),
-          database: config.get<string>('DB_NAME'),
-          entities: [__dirname + '/**/*.entity{.ts,.js}'],
-
-          synchronize:
-            config.get<string>('NODE_ENV') !== 'production' ? true : false,
-
-          ssl:
-            config.get<string>('DB_SSL') === 'true' ||
-            config.get<boolean>('DB_SSL') === true
-              ? {
-                  rejectUnauthorized:
-                    config.get<string>('DB_SSL_REJECT_UNAUTHORIZED') ===
-                      'true' ||
-                    config.get<boolean>('DB_SSL_REJECT_UNAUTHORIZED') === true,
-                }
-              : false,
-
-          extra: {
-            family: 4, // ✅ Force IPv4 socket connection
-          },
-        };
-      },
+      useFactory: async (config: ConfigService) => ({
+        type: 'postgres',
+        host: config.get<string>('DB_HOST'),
+        port: Number(config.get<string>('DB_PORT')) || 5432,
+        username: config.get<string>('DB_USER'),
+        password: config.get<string>('DB_PASS'),
+        database: config.get<string>('DB_NAME'),
+        entities: [__dirname + '/**/*.entity{.ts,.js}'],
+        synchronize: config.get<string>('NODE_ENV') !== 'production',
+        ssl:
+          config.get<string>('DB_SSL') === 'true'
+            ? { rejectUnauthorized: false }
+            : false,
+      }),
     }),
 
     // ✅ Feature modules
