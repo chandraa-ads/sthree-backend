@@ -9,31 +9,29 @@ async function bootstrap(): Promise<void> {
   const logger = new Logger('Bootstrap');
   logger.log('🚀 Bootstrapping application...');
 
-  const app: INestApplication = await NestFactory.create(AppModule, {
-    bufferLogs: true,
-  });
+  const app: INestApplication = await NestFactory.create(AppModule);
 
   const configService = app.get(ConfigService);
 
-  // ✅ Use Render or local port
+  // ✅ Get port from Render or default to 3000
   const port = process.env.PORT
     ? parseInt(process.env.PORT, 10)
     : configService.get<number>('PORT') || 3000;
 
-  // ✅ Use host 0.0.0.0 (Render) or localhost (local)
-  const host = process.env.RENDER ? '0.0.0.0' : 'localhost';
+  // ✅ Always bind to 0.0.0.0 (Render requirement)
+  const host = '0.0.0.0';
 
-  // ✅ CORS for frontend
+  // ✅ CORS setup
   const frontendUrl = configService.get<string>('FRONTEND_URL') || '*';
   app.enableCors({
     origin: frontendUrl,
     credentials: true,
   });
 
-  // ✅ Security middleware
+  // ✅ Security headers
   app.use(helmet.crossOriginResourcePolicy({ policy: 'cross-origin' }));
 
-  // ✅ Swagger setup
+  // ✅ Swagger
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Sthree Trendz API')
     .setDescription('Admin, Products, Orders, Users')
@@ -44,15 +42,13 @@ async function bootstrap(): Promise<void> {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api', app, document);
 
-  // ✅ Start server and ensure Render detects it
+  // ✅ Start the server
   await app.listen(port, host);
 
   const publicUrl =
     process.env.RENDER_EXTERNAL_URL || `http://${host}:${port}`;
-
-  logger.log(`✅ Listening on ${host}:${port}`);
-  logger.log(`🚀 Server started at: ${publicUrl}`);
-  logger.log(`📘 Swagger docs at: ${publicUrl}/api`);
+  logger.log(`✅ Server listening on ${host}:${port}`);
+  logger.log(`📘 Swagger docs: ${publicUrl}/api`);
 }
 
 bootstrap().catch((err) => {
