@@ -1,60 +1,70 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import helmet from 'helmet';
-import { ConfigService } from '@nestjs/config';
-import { INestApplication, Logger } from '@nestjs/common';
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { UsersModule } from './users/users.module';
+import { AdminModule } from './admin/admin.module';
+import { ProductsModule } from './products/products.module';
+import { OrdersModule } from './orders/orders.module';
+import { AuthModule } from './auth/auth.module';
+import { CartModule } from './cart/cart.module';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import * as dns from 'dns';
 
-async function bootstrap(): Promise<void> {
-  try {
-    const app: INestApplication = await NestFactory.create(AppModule, {
-      bufferLogs: true,
-    });
+@Module({
+  imports: [
+    // ✅ Load environment variables globally
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
 
-    const configService = app.get(ConfigService);
-    const logger = new Logger('Bootstrap');
+    // ✅ PostgreSQL connection setup
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (config: ConfigService) => {
+        // 🚀 Force IPv4 DNS resolution if requested
+        if (config.get<string>('DB_FORCE_IPV4') === 'true') {
+          dns.setDefaultResultOrder('ipv4first');
+          console.log('🔧 Forcing IPv4 DNS resolution');
+        }
 
-    // ✅ Use Render’s dynamic port (Render automatically sets PORT)
-    const port = parseInt(process.env.PORT || '10000', 10);
-    const host = '0.0.0.0'; // Required for Render
+        return {
+          type: 'postgres',
+          host: config.get<string>('DB_HOST'),
+          port: Number(config.get<string>('DB_PORT')) || 5432,
+          username: config.get<string>('DB_USER'),
+          password: config.get<string>('DB_PASS'),
+          database: config.get<string>('DB_NAME'),
+          entities: [__dirname + '/**/*.entity{.ts,.js}'],
 
-    console.log(`📡 Attempting to start server on port ${port}...`);
-    console.log(`🌍 Host binding: ${host}`);
+          synchronize:
+            config.get<string>('NODE_ENV') !== 'production' ? true : false,
 
-    // ✅ Allow frontend requests (CORS)
-    const frontendUrl = configService.get<string>('FRONTEND_URL') || '*';
-    app.enableCors({
-      origin: frontendUrl,
-      credentials: true,
-    });
+          // ✅ Simple SSL setup (no rejectUnauthorized flag)
+          ssl:
+            config.get<string>('DB_SSL') === 'true' ||
+            config.get<boolean>('DB_SSL') === true
+              ? { rejectUnauthorized: false }
+              : false,
 
-    // ✅ Security middleware
-    app.use(helmet.crossOriginResourcePolicy({ policy: 'cross-origin' }));
+          extra: {
+            family: 4, // ✅ Force IPv4 socket connection
+          },
+        };
+      },
+    }),
 
-    // ✅ Swagger setup
-    const swaggerConfig = new DocumentBuilder()
-      .setTitle('Sthree Trendz API')
-      .setDescription('Admin, Products, Orders, Users')
-      .setVersion('1.0')
-      .addBearerAuth()
-      .build();
+    // ✅ Feature modules
+    AuthModule,
+    AdminModule,
+    UsersModule,
+    ProductsModule,
+    CartModule,
+    OrdersModule,
+  ],
 
-    const document = SwaggerModule.createDocument(app, swaggerConfig);
-    SwaggerModule.setup('api', app, document);
-
-    // ✅ Start the server
-    await app.listen(port, host);
-
-    const publicUrl =
-      process.env.RENDER_EXTERNAL_URL || `http://localhost:${port}`;
-
-    logger.log(`🚀 Server started at: ${publicUrl}`);
-    logger.log(`📘 Swagger docs available at: ${publicUrl}/api`);
-    logger.log(`✅ Listening on port: ${port}`);
-  } catch (err) {
-    console.error('❌ Error during bootstrap:', err);
-    process.exit(1);
-  }
-}
-
-bootstrap();
+  controllers: [AppController],
+  providers: [AppService],
+})
+export class AppModule {}
