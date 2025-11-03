@@ -1,3 +1,6 @@
+import dns from 'dns';
+dns.setDefaultResultOrder('ipv4first'); // ✅ Force IPv4 resolution (fixes Supabase DNS on Render)
+
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -31,7 +34,7 @@ async function bootstrap(): Promise<void> {
   // ✅ Security headers
   app.use(helmet.crossOriginResourcePolicy({ policy: 'cross-origin' }));
 
-  // ✅ Swagger
+  // ✅ Swagger setup
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Sthree Trendz API')
     .setDescription('Admin, Products, Orders, Users')
