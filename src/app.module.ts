@@ -1,58 +1,62 @@
+// src/app.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+
 import { UsersModule } from './users/users.module';
-import { AdminModule } from './admin/admin.module';
 import { ProductsModule } from './products/products.module';
 import { OrdersModule } from './orders/orders.module';
 import { AuthModule } from './auth/auth.module';
+import { AdminModule } from './admin/admin.module';
+
+// ✅ Import your entities
+import { User } from './products/entities/product.entity';
+import { Category, Product, ProductVariant, ProductImage, ProductReview } from './products/entities/product.entity';
+import { CartItem } from './cart/entities/cart.entity';
 import { CartModule } from './cart/cart.module';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import * as dns from 'dns';
+import { Order } from './orders/entities/order.entity';
 
 @Module({
   imports: [
-    // ✅ Load environment variables globally
-    ConfigModule.forRoot({
-      isGlobal: true,
+    ConfigModule.forRoot({ isGlobal: true }),
+
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (config: ConfigService) => ({
+        type: 'postgres',
+        host: config.get('DB_HOST'),
+        port: parseInt(config.get('DB_PORT') || '5432', 10),
+        username: config.get('DB_USER'),
+        password: config.get('DB_PASS'),
+        database: config.get('DB_NAME'),
+        // ✅ Add all your entities here
+        entities: [
+          User,
+          Category,
+          Product,
+          ProductVariant,
+          ProductImage,
+          ProductReview,
+          CartItem,
+          Order,
+        ],
+        synchronize: config.get('NODE_ENV') !== 'production', // auto sync in dev
+        ssl: { rejectUnauthorized: false }, // ✅ for Supabase
+      }),
     }),
 
-    // ✅ PostgreSQL connection setup
-    TypeOrmModule.forRootAsync({
-  imports: [ConfigModule],
-  inject: [ConfigService],
-  useFactory: async (config: ConfigService) => {
-    return {
-      type: 'postgres',
-      host: config.get<string>('DB_HOST'),
-      port: Number(config.get<string>('DB_PORT')) || 5432,
-      username: config.get<string>('DB_USER'),
-      password: config.get<string>('DB_PASS'),
-      database: config.get<string>('DB_NAME'),
-      entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: config.get<string>('NODE_ENV') !== 'production',
-
-      ssl: { rejectUnauthorized: false },
-
-      extra: {
-        // 👇 This forces IPv4 connections only (important for Render + Supabase)
-        family: 4,
-      },
-    };
-  },
-}),
-
-
-    // ✅ Feature modules
-    AuthModule,
-    AdminModule,
     UsersModule,
     ProductsModule,
+    OrdersModule,
+    AuthModule,
+    AdminModule,
     CartModule,
     OrdersModule,
   ],
-
   controllers: [AppController],
   providers: [AppService],
 })

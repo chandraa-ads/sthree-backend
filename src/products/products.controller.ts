@@ -40,8 +40,8 @@ export class ProductsController {
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
     FileFieldsInterceptor([
-      { name: 'images', maxCount: 5 },
-      { name: 'variant_images', maxCount: 50 },
+      { name: 'images', maxCount: 10 },
+      { name: 'variant_images', maxCount: 20 },
     ]),
   )
   async create(
@@ -91,7 +91,7 @@ export class ProductsController {
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
     FileFieldsInterceptor([
-      { name: 'images', maxCount: 5 },
+      { name: 'images', maxCount: 10 },
       { name: 'variant_images', maxCount: 20 },
     ]),
   )

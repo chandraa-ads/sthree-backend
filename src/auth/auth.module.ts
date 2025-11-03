@@ -21,6 +21,6 @@ import { MailerService } from './mailer.service';
   ],
   providers: [AuthService, JwtStrategy, MailerService],
   controllers: [AuthController],
-  exports: [AuthService], // allow other modules to use AuthService
+  exports: [AuthService, TypeOrmModule], // allow other modules to use AuthService
 })
 export class AuthModule {}

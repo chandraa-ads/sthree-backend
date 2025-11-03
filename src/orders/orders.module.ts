@@ -5,6 +5,7 @@ import { memoryStorage } from 'multer';
 import { OrdersService } from './orders.service';
 import { OrdersController } from './orders.controller';
 import { NotificationService } from 'src/notifications/notification.service';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
 @Module({
   imports: [
