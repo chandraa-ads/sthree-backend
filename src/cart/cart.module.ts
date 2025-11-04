@@ -15,6 +15,6 @@ import { SupabaseModule } from '../supabase/supabase.module'; // ✅ Import Supa
   ],
   providers: [CartService],
   controllers: [CartController],
-  exports: [CartService, TypeOrmModule],
+  exports: [CartService],
 })
 export class CartModule {}

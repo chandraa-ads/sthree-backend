@@ -6,15 +6,12 @@ import { UserEntity } from './entities/user.entity';
 import { SupabaseModule } from '../supabase/supabase.module';
 
 @Module({
-  imports: [
+   imports: [
     TypeOrmModule.forFeature([UserEntity]),
-    SupabaseModule, // ✅ Supabase client for user sync or auth
+    SupabaseModule, // 🔑 Add this
   ],
-  controllers: [UsersController],
   providers: [UsersService],
-  exports: [
-    UsersService,
-    TypeOrmModule, // ✅ Export so relations (like Product.created_by_user) work across modules
-  ],
+  controllers: [UsersController],
+  exports: [UsersService],
 })
 export class UsersModule {}
